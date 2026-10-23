@@ -229,6 +229,9 @@ table.res th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:
 
 .stand td,.stand th{white-space:nowrap}
 .empty{padding:22px;text-align:center;color:var(--ink-soft)}
+.iconbtn{padding:6px 10px;display:inline-flex;align-items:center;justify-content:center}
+.namebar .spacer{flex:1}
+input[type=range]{accent-color:var(--red);width:100%;max-width:280px}
 .foot{color:var(--chalk-soft);font-size:13px;text-align:center}
 .foot a{color:var(--chalk)}
 .toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);background:var(--paper);color:var(--ink);padding:10px 16px;border-radius:999px;font-weight:700;z-index:30;box-shadow:0 10px 30px -10px rgba(0,0,0,.7);max-width:calc(100% - 32px)}
@@ -1004,6 +1007,170 @@ const TRIVIA = [
   {cat:'Table', q:"How many cards go into the kitty?", a:["3","2","4","5"], note:"The bidder picks them up and throws away 3."}
 ];
 
+/* Forty-Fives sounds. Everything is synthesized with the Web Audio API: no audio files. */
+const Sound = (function(){
+  let ctx = null, master = null, sfxBus = null, ambBus = null, noiseBuf = null;
+  let enabled = true, ambOn = true, volume = 0.7, ambWanted = false, amb = null;
+
+  function ensure(){
+    if (ctx) return ctx;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    try { ctx = new AC(); } catch(e){ return null; }
+    master = ctx.createGain(); master.gain.value = volume; master.connect(ctx.destination);
+    sfxBus = ctx.createGain(); sfxBus.gain.value = 1; sfxBus.connect(master);
+    ambBus = ctx.createGain(); ambBus.gain.value = 0; ambBus.connect(master);
+    const len = ctx.sampleRate * 2;
+    noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    return ctx;
+  }
+  /* Browsers only allow sound after the player touches the page. */
+  function unlock(){
+    if (!ensure()) return;
+    if (ctx.state === 'suspended') ctx.resume().catch(function(){});
+    syncAmbience();
+  }
+  const ready = () => ctx && ctx.state === 'running' && enabled;
+  const now = () => ctx.currentTime;
+
+  function noise(t, dur, o){
+    o = o || {};
+    const src = ctx.createBufferSource(); src.buffer = noiseBuf;
+    src.playbackRate.value = o.rate || 1;
+    const f = ctx.createBiquadFilter(); f.type = o.type || 'bandpass'; f.frequency.value = o.freq || 3000; f.Q.value = o.q || 1;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(o.gain || 0.3, t + (o.attack || 0.002));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f); f.connect(g); g.connect(o.bus || sfxBus);
+    src.start(t, Math.random() * 1.5); src.stop(t + dur + 0.05);
+  }
+  function tone(t, freq, dur, o){
+    o = o || {};
+    const osc = ctx.createOscillator(); osc.type = o.type || 'sine';
+    osc.frequency.setValueAtTime(freq, t);
+    if (o.to) osc.frequency.exponentialRampToValueAtTime(o.to, t + (o.glide || dur));
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(o.gain || 0.2, t + (o.attack || 0.005));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    let out = g;
+    if (o.lp){ const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = o.lp; g.connect(f); out = f; }
+    osc.connect(g); out.connect(o.bus || sfxBus);
+    osc.start(t); osc.stop(t + dur + 0.05);
+  }
+
+  const S = {
+    /* one card snapped onto the felt */
+    card(at){ if (!ready()) return; const t = now() + (at || 0);
+      noise(t, 0.07, {freq: 2600 + Math.random() * 900, q: 0.8, gain: 0.28});
+      noise(t, 0.03, {type: 'highpass', freq: 5000, gain: 0.12}); },
+    /* a run of cards being dealt */
+    deal(n, at){ if (!ready()) return; for (let i = 0; i < Math.min(n, 12); i++) S.card((at || 0) + i * 0.075); },
+    /* riffle shuffle */
+    shuffle(){ if (!ready()) return; const t = now();
+      for (let i = 0; i < 26; i++) noise(t + i * 0.022 + Math.random() * 0.008, 0.03, {freq: 3200 + Math.random() * 1500, q: 1.2, gain: 0.12});
+      noise(t + 0.62, 0.09, {type: 'lowpass', freq: 900, gain: 0.25}); },
+    /* knuckles on the table: a pass */
+    knock(){ if (!ready()) return; const t = now();
+      [0, 0.13].forEach(dt => { tone(t + dt, 150, 0.12, {to: 70, gain: 0.45, glide: 0.1}); noise(t + dt, 0.05, {type: 'lowpass', freq: 700, gain: 0.3}); }); },
+    /* a bid or a hold */
+    bid(v){ if (!ready()) return; const t = now(), f = 520 + ((v || 15) - 15) * 18;
+      tone(t, f, 0.16, {type: 'triangle', gain: 0.22}); tone(t, f * 2, 0.08, {gain: 0.06}); },
+    /* trump named */
+    trump(){ if (!ready()) return; const t = now();
+      [392, 523.25, 659.25].forEach((f, i) => tone(t + i * 0.05, f, 0.5, {type: 'triangle', gain: 0.13})); },
+    /* trick taken; mine = your side took it */
+    trick(mine){ if (!ready()) return; const t = now() + 0.12;
+      if (mine){ tone(t, 659.25, 0.25, {type: 'triangle', gain: 0.16}); tone(t + 0.09, 987.77, 0.35, {type: 'triangle', gain: 0.14}); }
+      else { tone(t, 220, 0.22, {type: 'triangle', gain: 0.14, lp: 1200}); tone(t + 0.08, 196, 0.3, {type: 'triangle', gain: 0.12, lp: 1200}); }
+      noise(t - 0.1, 0.12, {freq: 1800, q: 0.6, gain: 0.12}); },
+    /* bid made / set; good = good news for you */
+    made(good){ if (!ready()) return; const t = now();
+      const notes = good ? [523.25, 659.25, 783.99, 1046.5] : [523.25, 659.25, 783.99];
+      notes.forEach((f, i) => tone(t + i * 0.09, f, 0.4, {type: 'triangle', gain: good ? 0.15 : 0.09})); },
+    set(good){ if (!ready()) return; const t = now();
+      if (good){ tone(t, 392, 0.2, {type: 'square', gain: 0.06, lp: 1800}); tone(t + 0.12, 523.25, 0.35, {type: 'square', gain: 0.06, lp: 1800}); return; }
+      [311.13, 293.66, 277.18].forEach((f, i) => tone(t + i * 0.28, f, 0.3, {type: 'sawtooth', gain: 0.08, lp: 900}));
+      tone(t + 0.84, 261.63, 0.8, {type: 'sawtooth', gain: 0.08, lp: 900, to: 220, glide: 0.8}); },
+    /* game over */
+    win(){ if (!ready()) return; const t = now();
+      [[523.25,0],[659.25,0.12],[783.99,0.24],[1046.5,0.36],[783.99,0.54],[1046.5,0.66]].forEach(p => tone(t + p[1], p[0], p[1] > 0.6 ? 0.9 : 0.25, {type: 'triangle', gain: 0.16}));
+      [523.25, 659.25, 783.99].forEach(f => tone(t + 0.66, f, 1.1, {type: 'sine', gain: 0.06})); },
+    lose(){ if (!ready()) return; const t = now();
+      [392, 349.23, 329.63, 261.63].forEach((f, i) => tone(t + i * 0.22, f, i === 3 ? 0.8 : 0.24, {type: 'triangle', gain: 0.12, lp: 1500})); },
+    /* neon sign buzzing on */
+    neon(){ if (!ready()) return; const t = now();
+      const osc = ctx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 120;
+      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = 2;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0, t);
+      // flicker pattern matches the sign's power-on animation
+      [[0,0.02],[0.12,0],[0.18,0.035],[0.3,0.004],[0.4,0.03],[0.52,0.006],[0.6,0.03],[1.6,0.02],[2.4,0]].forEach(p => g.gain.setValueAtTime(p[1], t + p[0]));
+      osc.connect(f); f.connect(g); g.connect(sfxBus); osc.start(t); osc.stop(t + 2.5);
+      [0, 0.18, 0.4, 0.6].forEach(dt => noise(t + dt, 0.04, {type: 'highpass', freq: 3000, gain: 0.08})); },
+    right(){ if (!ready()) return; const t = now();
+      tone(t, 1318.5, 0.5, {gain: 0.14}); tone(t + 0.1, 1760, 0.7, {gain: 0.12}); },
+    wrong(){ if (!ready()) return; const t = now();
+      tone(t, 155.56, 0.35, {type: 'square', gain: 0.07, lp: 700}); },
+    /* your turn */
+    turn(){ if (!ready()) return; const t = now(); tone(t, 880, 0.12, {gain: 0.07}); },
+    /* a cleared kitty or discard, face down */
+    toss(n){ if (!ready()) return; for (let i = 0; i < Math.min(n, 7); i++) noise(now() + i * 0.06, 0.06, {freq: 1500, q: 0.7, gain: 0.14}); }
+  };
+
+  /* ---------- bar ambience: crowd murmur plus the odd glass clink ---------- */
+  function startAmbience(){
+    if (amb || !ctx) return;
+    const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 520;
+    const bp = ctx.createBiquadFilter(); bp.type = 'peaking'; bp.frequency.value = 300; bp.gain.value = 6;
+    const g = ctx.createGain(); g.gain.value = 0.22;
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.17; const lfoG = ctx.createGain(); lfoG.gain.value = 0.08;
+    lfo.connect(lfoG); lfoG.connect(g.gain);
+    src.connect(lp); lp.connect(bp); bp.connect(g); g.connect(ambBus);
+    src.start(); lfo.start();
+    amb = {src, lfo, timer: null};
+    const clink = () => {
+      if (!amb) return;
+      if (ctx.state === 'running'){
+        const t = now(), f = 2400 + Math.random() * 1600;
+        tone(t, f, 0.5, {gain: 0.035, bus: ambBus}); tone(t + 0.01, f * 1.5, 0.3, {gain: 0.02, bus: ambBus});
+      }
+      amb.timer = setTimeout(clink, 5000 + Math.random() * 11000);
+    };
+    amb.timer = setTimeout(clink, 3000);
+  }
+  function stopAmbience(){
+    if (!amb) return;
+    clearTimeout(amb.timer);
+    try { amb.src.stop(); amb.lfo.stop(); } catch(e){}
+    amb = null;
+  }
+  function syncAmbience(){
+    const on = ambWanted && ambOn && enabled && !document.hidden;
+    if (!ctx){ return; }
+    if (on){ startAmbience(); ambBus.gain.setTargetAtTime(0.5, now(), 0.6); }
+    else if (amb){ ambBus.gain.setTargetAtTime(0, now(), 0.25); const a = amb; setTimeout(() => { if (amb === a && !(ambWanted && ambOn && enabled)) stopAmbience(); }, 1200); }
+  }
+
+  ['pointerdown', 'keydown', 'touchstart'].forEach(ev => document.addEventListener(ev, unlock, {passive: true}));
+  document.addEventListener('visibilitychange', () => {
+    if (!ctx) return;
+    if (document.hidden) ctx.suspend().catch(function(){}); else { ctx.resume().catch(function(){}); }
+    syncAmbience();
+  });
+
+  S.configure = function(o){
+    enabled = !!o.sound; ambOn = !!o.ambience; volume = o.volume == null ? 0.7 : o.volume;
+    if (master) master.gain.setTargetAtTime(enabled ? volume : 0, now(), 0.05);
+    syncAmbience();
+  };
+  S.ambience = function(want){ if (want === ambWanted) return; ambWanted = want; syncAmbience(); };
+  return S;
+})();
+
 const venueById = id => VENUES.find(v => v.id === id) || null;
 
 /* ---------- storage ---------- */
@@ -1015,6 +1182,34 @@ const prefs = Object.assign({name:'You', level:'normal', speed:'normal', hints:t
 prefs.rules = Object.assign({}, RULE_DEFAULTS, prefs.rules || {});
 function savePrefs(){ save('ff.prefs', prefs); }
 if (prefs.venue == null) prefs.venue = '';
+if (prefs.sound == null) prefs.sound = true;
+if (prefs.ambience == null) prefs.ambience = true;
+if (prefs.volume == null) prefs.volume = 0.7;
+Sound.configure(prefs);
+window.FFSound = Sound;
+const SPEAKER_ON = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>';
+const SPEAKER_OFF = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M17 9l5 6M22 9l-5 6"/></svg>';
+const muteBtn = () => `<button class="btn ghost small iconbtn" data-act="mute" aria-pressed="${prefs.sound ? 'false' : 'true'}" aria-label="${prefs.sound ? 'Turn sound off' : 'Turn sound on'}" title="${prefs.sound ? 'Sound on' : 'Sound off'}">${prefs.sound ? SPEAKER_ON : SPEAKER_OFF}</button>`;
+/* play sounds for whatever just happened in the game log */
+function playLog(from){
+  const g = S.g; if (!g) return;
+  const evs = g.log.slice(from);
+  const mine = new Set(S.cfg.seats.map((s, i) => s.human ? g.teams[i] : -1).filter(x => x >= 0));
+  const over = evs.some(e => e.t === 'gameOver');
+  evs.forEach(e => {
+    switch (e.t){
+      case 'deal': Sound.shuffle(); Sound.deal(10, 0.75); break;
+      case 'bid': if (e.type === 'pass') Sound.knock(); else Sound.bid(e.value); break;
+      case 'trump': Sound.trump(); break;
+      case 'kitty': Sound.toss(3); break;
+      case 'draw': if (e.count) Sound.deal(e.count); break;
+      case 'play': Sound.card(); break;
+      case 'trick': Sound.trick(mine.has(g.teams[e.winner])); break;
+      case 'handEnd': if (!over){ const good = mine.has(g.teams[e.bidder]); if (e.made) Sound.made(good); else Sound.set(!good); } break;
+      case 'gameOver': if (mine.has(e.winner)) Sound.win(); else Sound.lose(); break;
+    }
+  });
+}
 const tour = Object.assign({beaten:{}, right:0, asked:0, seen:[]}, load('ff.tour', {}));
 function saveTour(){ save('ff.tour', tour); }
 const isOpen = i => i === 0 || !!tour.beaten[VENUES[i - 1].id];
@@ -1110,6 +1305,8 @@ function startGame(cfg, opts){
   S.cfg = cfg; S.g = g; S.sel = []; S.hint = null; S.hold = 0; S.handoff = null; S.recorded = false;
   S.handQ = null; S.unlocked = null; S.tourWon = false; S.tourFinal = false;
   S.arrival = opts.arrival ? {q:pickQ(), fresh:true} : null;
+  S.turnKey = null;
+  playLog(0);
   S.viewer = cfg.seats.findIndex(s => s.human);
   S.screen = 'table';
   persist(); advance();
@@ -1139,6 +1336,8 @@ function advance(){
   if (sc.human){
     if (S.viewer !== seat){ if (humans() > 1) S.handoff = seat; S.viewer = seat; }
     if ((S.cfg.coach) && !S.hint && !S.handoff) S.hint = FF.hint(g, seat, S.rng);
+    const tk = g.handNo + ':' + g.log.length;
+    if (!S.handoff && S.turnKey !== tk){ Sound.turn(); S.turnKey = tk; }
     render(); return;
   }
   render();
@@ -1149,8 +1348,9 @@ function advance(){
 }
 function act(a){
   const g = S.g, nt = g.tricks.length, prevPhase = g.phase, prevHand = g.handNo;
-  const actor = FF.currentSeat(g);
+  const actor = FF.currentSeat(g), logFrom = g.log.length;
   try { FF.apply(g, a, S.rng); } catch(e){ toast(e.message); return; }
+  playLog(logFrom);
   S.sel = []; S.hint = null;
   if (g.tricks.length > nt || (prevPhase === 'play' && g.phase !== 'play')) S.hold = Date.now() + trickPause();
   if (prevPhase === 'bid' && g.phase === 'bid' && g.handNo !== prevHand) toast('Everyone passed. The deal moves to ' + g.names[g.dealer] + '.');
@@ -1227,6 +1427,7 @@ function render(){
   const v = S.screen === 'table' && S.cfg && S.cfg.venue ? venueById(S.cfg.venue) : null;
   const bs = document.body.style;
   document.body.className = v ? 'in-venue v-' + v.style : '';
+  Sound.ambience(!!v);
   if (v){ const p = STYLE[v.style]; bs.setProperty('--wall', p.wall); bs.setProperty('--wall2', p.wall2); bs.setProperty('--trim', p.trim); bs.setProperty('--neon', v.neon); }
   else ['--wall','--wall2','--trim','--neon'].forEach(k => bs.removeProperty(k));
   $app.innerHTML = h;
@@ -1234,7 +1435,7 @@ function render(){
 }
 function topbar(extra){
   return `<div class="topbar"><button class="btn ghost small" data-act="home" aria-label="Back to menu">← Menu</button>
-    <div class="brand">Forty-Fives <small>Merrimack Valley rules</small></div><div class="spacer"></div>${extra || ''}</div>`;
+    <div class="brand">Forty-Fives <small>Merrimack Valley rules</small></div><div class="spacer"></div>${extra || ''}${muteBtn()}</div>`;
 }
 
 /* ---------- home ---------- */
@@ -1253,7 +1454,7 @@ function homeView(){
   </div>
   <div class="namebar"><label for="pname">Playing as</label><input type="text" id="pname" data-bind="name" value="${esc(prefs.name)}" maxlength="18" autocomplete="nickname">
     <label for="plevel">Computer players</label><select id="plevel" data-bind="level"><option value="normal" ${prefs.level==='normal'?'selected':''}>Normal</option><option value="hard" ${prefs.level==='hard'?'selected':''}>Hard</option></select>
-    ${allOpen() ? venueSelect('pvenue') : ''}</div>
+    ${allOpen() ? venueSelect('pvenue') : ''}<span class="spacer"></span>${muteBtn()}</div>
   ${saved ? `<div class="paper row" style="justify-content:space-between"><div><div class="eyebrow">Game in progress</div><b style="font-family:var(--f-display);font-size:20px">${esc(MODE_INFO[saved.cfg.mode].title)} · hand ${saved.g.handNo} · ${saved.g.scores.join(' – ')}</b></div><button class="btn paperbtn" data-act="resume">Resume game</button></div>` : ''}
   ${nightOutHTML()}
   <div class="modes">${modes}</div>
@@ -1462,6 +1663,7 @@ function layerView(){
   const g = S.g;
   if (S.arrival){
     const v = venueById(S.cfg.venue), i = S.cfg.tourStop, fresh = S.arrival.fresh; S.arrival.fresh = false;
+    if (fresh) setTimeout(() => Sound.neon(), 900);
     return h + `<div class="overlay"><div class="paper"><div class="marquee">${signHTML(v, fresh ? 'on' : '')}</div>
       <div class="eyebrow">Stop ${i + 1} of 10 · ${diffLabel(v)}${tour.beaten[v.id] ? ' · beaten before' : ''}</div>
       <h2>${esc(venueLine(v))}</h2>
@@ -1695,6 +1897,10 @@ function rulesView(){
       ${chk('thirtyForSixty', '30 for 60', 'A made bid of 30 scores 60.')}
       ${chk('mustBidOut', 'Must bid to go out', 'A side can only reach the winning score on its own bid.')}
       <div class="row"><button class="btn ghost" data-act="ruledefaults">Restore Merrimack Valley defaults</button></div>
+      <h3 style="margin-top:6px">Sound</h3>
+      <label class="check"><input type="checkbox" id="psound" data-bind="prefcheck" data-k="sound" ${prefs.sound ? 'checked' : ''}><span><b>Game sounds</b><br><span class="soft">Shuffling, cards hitting the felt, knocks for a pass, and more.</span></span></label>
+      <label class="check"><input type="checkbox" id="pamb" data-bind="prefcheck" data-k="ambience" ${prefs.ambience ? 'checked' : ''}><span><b>Bar ambience</b><br><span class="soft">Crowd murmur and clinking glasses when you play at one of the bars.</span></span></label>
+      <div class="field"><label for="pvol">Volume</label><input type="range" id="pvol" data-bind="volume" min="0" max="1" step="0.05" value="${prefs.volume}"></div>
     </div>
   </div>`;
 }
@@ -1719,7 +1925,8 @@ document.addEventListener('click', e => {
     case 'tourgo': startTour(+el.dataset.i); break;
     case 'seat': S.arrival = null; advance(); break;
     case 'triv': { const T = el.dataset.where === 'arrival' ? S.arrival.q : S.handQ; if (!T || T.pick != null) break;
-      T.pick = +el.dataset.k; tour.asked++; if (T.opts[T.pick] === T.right) tour.right++; saveTour(); render(); break; }
+      T.pick = +el.dataset.k; tour.asked++; if (T.opts[T.pick] === T.right){ tour.right++; Sound.right(); } else Sound.wrong(); saveTour(); render(); break; }
+    case 'mute': prefs.sound = !prefs.sound; savePrefs(); Sound.configure(prefs); render(); if (prefs.sound) Sound.bid(20); break;
     case 'reveal': S.handoff = null; advance(); break;
     case 'next': S.hint = null; S.handQ = null; act({type:'next'}); break;
     case 'bid': act(el.dataset.type === 'bid' ? {type:'bid', value:+el.dataset.value} : {type:el.dataset.type}); break;
@@ -1760,6 +1967,8 @@ document.addEventListener('change', e => {
   else if (b === 'speed'){ prefs.speed = el.value; savePrefs(); }
   else if (b === 'rule'){ const k = el.dataset.k; prefs.rules[k] = (k === 'maxDraw' || k === 'target') ? +el.value : el.value; savePrefs(); }
   else if (b === 'rulecheck'){ prefs.rules[el.dataset.k] = el.checked; savePrefs(); }
+  else if (b === 'prefcheck'){ prefs[el.dataset.k] = el.checked; savePrefs(); Sound.configure(prefs); }
+  else if (b === 'volume'){ prefs.volume = +el.value; savePrefs(); Sound.configure(prefs); Sound.bid(20); }
 });
 document.addEventListener('input', e => {
   const el = e.target, b = el.dataset && el.dataset.bind; if (!b) return;
