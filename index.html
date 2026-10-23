@@ -30,7 +30,7 @@
   --paper:#f2e9d3; --paper-2:#e7dbbd; --paper-edge:#cdbd96; --ink:#2b2720; --ink-soft:#6a604f;
   --card:#fbf8ef; --card-edge:#d4cab2; --red:#b02a30; --black:#1c1c21; --back1:#7a2a2e; --back2:#8e3438;
   --gold:#e3b44f; --gold-ink:#3a2a08; --chalk:#e8f0ec; --chalk-soft:#a8c3bf;
-  --good:#2e7a4c; --bad:#b02a30; --team0:#e3b44f; --team1:#8fc4e8; --team2:#e88f9b; --team3:#b6e08f;
+  --good:#2e7a4c; --bad:#b02a30; --team0:#e3b44f; --team1:#8fc4e8; --team2:#e88f9b; --team3:#b6e08f; --team4:#d7b3ff;
   --f-display:'Zilla Slab', Rockwell, Georgia, serif;
   --f-body:'Atkinson Hyperlegible', 'Segoe UI', system-ui, sans-serif;
   --f-hand:'Kalam', 'Bradley Hand', 'Comic Sans MS', cursive;
@@ -121,6 +121,10 @@ button.card:hover:not(.dim){transform:translateY(-6px)}
 .felt{display:flex;flex-direction:column;gap:12px;min-width:0}
 .table{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2.4fr) minmax(0,1fr);grid-template-areas:". n ." "w c e" ". s .";gap:8px;align-items:center;border:2px solid var(--felt-line);border-radius:22px;padding:12px;background:rgba(0,0,0,.08)}
 .table.two{grid-template-areas:". n ." ". c ." ". s ."}
+.table.five{grid-template-areas:"nw n ne" "w c e" ". s .";grid-template-columns:minmax(0,1.25fr) minmax(0,1.7fr) minmax(0,1.25fr)}
+.table.five .center .mid{min-width:0}
+.game.five{grid-template-columns:minmax(0,1fr) 330px}
+.seat.pos-nw{grid-area:nw}.seat.pos-ne{grid-area:ne}
 .seat{display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;min-width:0}
 .seat.pos-n{grid-area:n}.seat.pos-w{grid-area:w}.seat.pos-e{grid-area:e}.seat.pos-s{grid-area:s}
 .plate{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:rgba(0,0,0,.22);font-weight:700;font-size:15px;max-width:100%;border:2px solid transparent}
@@ -133,7 +137,8 @@ button.card:hover:not(.dim){transform:translateY(-6px)}
 .chip.bad{background:var(--bad);color:var(--paper)}
 .backs{display:flex}
 .backs .card+.card{margin-left:-11px}
-.center{grid-area:c;display:grid;grid-template-columns:1fr auto 1fr;grid-template-rows:auto auto auto;grid-template-areas:". n ." "w m e" ". s .";place-items:center;gap:4px;min-height:230px}
+.center{grid-area:c;display:grid;grid-template-columns:1fr auto 1fr;grid-template-rows:auto auto auto;grid-template-areas:"nw n ne" "w m e" ". s .";place-items:center;gap:4px;min-height:230px}
+.center .slot.nw{grid-area:nw;justify-self:end}.center .slot.ne{grid-area:ne;justify-self:start}
 .center .slot{min-height:10px}
 .center .slot.n{grid-area:n}.center .slot.s{grid-area:s}.center .slot.w{grid-area:w;justify-self:end}.center .slot.e{grid-area:e;justify-self:start}
 .center .mid{grid-area:m;text-align:center;font-size:13px;color:var(--chalk-soft);display:flex;flex-direction:column;align-items:center;gap:6px;min-width:70px}
@@ -143,7 +148,22 @@ button.card:hover:not(.dim){transform:translateY(-6px)}
 .trumpbadge.red{color:var(--red)}.trumpbadge.blk{color:var(--black)}
 
 .status{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:14px;color:var(--chalk-soft);min-height:24px}
-.ticker{font-size:15px;color:var(--chalk);min-height:22px}
+.ticker{font-size:14px;color:var(--chalk-soft);min-height:20px}
+.seat{position:relative}
+.bubble{position:absolute;left:50%;transform:translateX(-50%);z-index:6;background:var(--paper);color:var(--ink);font:400 17px/1.25 var(--f-hand);padding:7px 12px;border-radius:12px;width:max-content;max-width:min(210px,44vw);text-align:center;box-shadow:0 10px 20px -8px rgba(0,0,0,.75);pointer-events:none}
+.bubble::before{content:'';position:absolute;left:50%;width:12px;height:12px;background:var(--paper);transform:translateX(-50%) rotate(45deg)}
+.bubble.down{top:calc(100% + 9px)}.bubble.down::before{top:-5px}
+.bubble.up{bottom:calc(100% + 9px)}.bubble.up::before{bottom:-5px}
+.bubble.new{animation:pop .2s ease-out}
+@keyframes pop{from{transform:translateX(-50%) scale(.7);opacity:0}to{transform:translateX(-50%) scale(1);opacity:1}}
+.talk{display:flex;gap:4px 12px;align-items:baseline;flex-wrap:wrap;background:var(--paper);color:var(--ink);border-radius:10px;padding:10px 14px;box-shadow:0 12px 26px -14px rgba(0,0,0,.85);min-height:50px;position:relative}
+.talk .who{font:700 11px/1 var(--f-body);letter-spacing:.12em;text-transform:uppercase;color:var(--red);flex:none}
+.talk .say{font:400 21px/1.3 var(--f-hand);min-width:0}
+.talk.new .say{animation:slidein .25s ease-out}
+@keyframes slidein{from{transform:translateY(4px);opacity:.2}to{transform:none;opacity:1}}
+.chip.green{background:var(--good);color:#eafff0}
+.padcols .gr{display:block;font:700 11px/1.2 var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:var(--good);margin-top:2px}
+.padcols.many .hd{font-size:12px;overflow-wrap:normal;word-break:normal}.padcols.many .v{font-size:16px}.padcols.many .v.cur{font-size:19px}
 
 .handwrap{display:flex;flex-direction:column;align-items:center;gap:8px;padding-top:18px}
 .hand{display:flex;justify-content:center;max-width:100%;padding-inline:4px}
@@ -281,7 +301,7 @@ body.in-venue .actions{background:rgba(0,0,0,.45)}
 .trivia .opt.wrong{border-color:var(--bad);background:#f3d4d4}
 .trivia .tnote{font-size:14px}
 @media (max-width: 900px){
-  .game{grid-template-columns:minmax(0,1fr)}
+  .game,.game.five{grid-template-columns:minmax(0,1fr)}
   .modes{grid-template-columns:repeat(2,minmax(0,1fr))}
   .lessons{grid-template-columns:minmax(0,1fr)}
   .lnav{flex-direction:row;overflow-x:auto;padding-bottom:4px}
@@ -332,7 +352,7 @@ const DEFAULT_SETTINGS = {
   maxBid: 30,
   bidStep: 5,
   followSuit: 'free',   // 'free' (MV: any card on an off-suit lead) | 'followOrTrump'
-  allPass: 'dealerChoice', // 'dealerChoice' (take 15 or pass the deal) | 'dealerStuck' (must take it)
+  allPass: 'dealerStuck', // 'dealerStuck' (dealer is bagged and must bid) | 'dealerChoice' (dealer may pass the deal)
   maxDraw: 4,           // most cards a player may exchange in the draw; also the most a bidder may toss from their own 5
   leader: 'bidder',     // 'bidder' | 'leftOfDealer'
   thirtyForSixty: false,// a made bid of 30 scores 60
@@ -936,7 +956,7 @@ const MODE_INFO = {
   solo:      {title:'Solo', who:'You + partner vs 2', desc:'You and a computer partner against two computer players.'},
   h2h:       {title:'Head-to-Head', who:'1 vs 1', desc:'Just you and one opponent. Every trick counts.'},
   partners:  {title:'Partners', who:'2 vs 2', desc:'Classic teams. Pass the device or fill seats with computer players.'},
-  cutthroat: {title:'Cutthroat', who:'3 or 4 players', desc:'Everyone plays for themselves. No partners, no mercy.'}
+  cutthroat: {title:'Cutthroat', who:'3, 4 or 5 players', desc:'Everyone plays for themselves. No partners, no mercy.'}
 };
 const RULE_DEFAULTS = Object.assign({}, FF.DEFAULT_SETTINGS);
 const STYLE = {
@@ -953,7 +973,7 @@ const VENUES = [
   {id:'colonial',   name:'The Colonial',      style:'brick', neon:'#ffe08a', motif:'lantern', mode:'cutthroat', n:3, levels:['normal','normal'],          people:['Marcel','Bev']},
   {id:'theater',    name:'The Theater Club',  style:'dark',  neon:'#ff6ad5', motif:'star',    mode:'h2h',       n:2, levels:['hard'],                     people:['Connie']},
   {id:'lamplighters',name:'Lamplighters',     style:'wood',  neon:'#ffcf6e', motif:'lamp',    mode:'solo',      n:4, levels:['hard','normal','normal'],   people:['Ray','Jeanne','Denis']},
-  {id:'buckos',     name:"Bucko's",           style:'brick', neon:'#4ef0ff', motif:'martini', mode:'cutthroat', n:4, levels:['normal','normal','hard'],   people:['Mickey','Peg','Chet']},
+  {id:'buckos',     name:"Bucko's",           style:'brick', neon:'#4ef0ff', motif:'martini', mode:'cutthroat', n:5, levels:['normal','normal','hard','normal'], people:['Mickey','Peg','Chet','Fran']},
   {id:'unceddies',  name:"Uncle Eddie's",     style:'paper', neon:'#ff8a3d', motif:'mug',     mode:'solo',      n:4, levels:['hard','normal','hard'],     people:['Leo','Paulette','Hector']},
   {id:'claddagh',   name:'The Claddagh',      style:'wood',  neon:'#3dff7a', motif:'heart',   mode:'cutthroat', n:3, levels:['hard','hard'],              people:['Kevin','Maureen']},
   {id:'halcyon',    name:'The Halcyon',       style:'dark',  neon:'#b98cff', motif:'bird',    mode:'solo',      n:4, levels:['hard','hard','hard'],       people:['Big Al','Dottie','Yvon']}
@@ -1171,6 +1191,42 @@ const Sound = (function(){
   return S;
 })();
 
+/* Table talk: what the regulars and the peanut gallery say. Edit freely.
+   {name} {bid} {suit} {card} {venue} {dealer} are filled in by the game. */
+const TALK = {
+  greetKitchen: ["Pull up a chair. Cahds are on the table.", "Kitchen table rules: no crying, no whining, no reneging.", "Coffee's on. Somebody deal already."],
+  greetBar: ["Welcome to {venue}. Mind the regulars, they bite.", "{venue}. Grab a stool and try not to embarrass yourself.", "Ah, {venue}. Sticky floors, sharp players."],
+  deal: ["{dealer} deals. Cut 'em thin, win 'em in.", "{dealer}'s dealin'. Watch the bottom of that deck.", "Fresh hand. {dealer} has the deck.", "{dealer} shuffles like my grandmother. Slow, but deadly."],
+  pass: ["I'm out.", "Pass. Not with this garbage.", "Nothin' heah. Pass.", "Pass, and I'm not happy about it.", "Can't do a thing with this. Pass.", "Pass. Somebody deal me a five already.", "I'm stayin' outta this one.", "Pass. Wicked bad cahds."],
+  bid: ["{bid}. Don't look at me like that.", "{bid}, and I mean it.", "I'll go {bid}.", "{bid}. Wicked confident, I am.", "{bid}. Who's gonna stop me?", "Ayuh, {bid}.", "{bid}. Read 'em and weep, guy."],
+  bid30: ["Thirty. Go big or go home to Dracut.", "Thirty! I'm feelin' it tonight.", "Thirty. Nobody touch my drink.", "Thirty. Shoot the moon, baby."],
+  hold: ["I'll hold it.", "Mine. I'm holdin'.", "Hold. Dealer's privilege, pal."],
+  baggedSelf: ["Bagged again. Figures.", "Oh, sure, bag the dealer. Real nice.", "Bagged! Every single time with you people.", "Fifteen, I guess. Thanks for nothin'."],
+  baggedYou: ["Everybody passed. You're bagged, kid. Fifteen's yours whether ya like it or not.", "They bagged ya. Hope ya got somethin' in there.", "Bagged! Classic. Make it work."],
+  bidReact: ["{bid}? Livin' dangerously.", "Oh, look at Mister Big Shot.", "{bid}, huh? We'll see about that.", "Somebody's feelin' lucky.", "{bid}? Wicked bold."],
+  passReact: ["Smaht move.", "Chicken.", "Yeah, I'd pass too with that face."],
+  trump: ["{suit}. Try and keep up.", "{suit} are trump. Buckle up.", "Make it {suit}.", "{suit}. You heard me."],
+  trumpYou: ["{suit} it is. No pressure.", "{suit}, huh? Bold.", "{suit}. The whole bar's watchin'."],
+  booked: ["I'm booked. Might as well fold 'em up.", "Booked, guy. Sorry, not sorry.", "All trump heah. You're done.", "Booked. Just sayin', as a courtesy."],
+  bookedYou: ["{name}'s booked! Somebody get the othah guys a tissue.", "{name} says they're booked. Courteous AND dangerous."],
+  bookedGroan: ["Oh, come on.", "Booked? Get outta heah.", "Figures."],
+  bigCard: ["{card}. Thank you very much.", "Bang. {card}.", "Nobody beats the {card}, kid.", "{card}, baby. Wicked pissah."],
+  groan: ["Oh, you've gotta be kiddin' me.", "Where'd you get that?", "Lucky. Wicked lucky.", "Unbelievable."],
+  trickSelf: ["Mine.", "I'll take that.", "That one's comin' home with me.", "Thank you."],
+  madeSelf: ["Made it. Never in doubt.", "Told ya. Pay up.", "And that's how it's done in the Valley.", "Easy. Like takin' candy from a townie."],
+  setSelf: ["Ah, jeez.", "Set. Unbelievable.", "I got robbed. Robbed!", "Don't say it. Don't you say it."],
+  setRib: ["Sit down, ya got set!", "Set! Somebody call the Eagle-Tribune.", "Ooh. That's gonna leave a mahk.", "Back to the minors with ya."],
+  madeYou: ["Ya made it. Not bad for a townie.", "Made it! Wicked good.", "Bid made. Act like you've been there before."],
+  made30You: ["Thirty, and ya made it! Somebody call the Lowell Sun."],
+  setYou: ["Ya got set. Rough night, kid.", "Set! Ya gotta know when to fold 'em.", "Set. Pull up a stool and think about what you did."],
+  greenThem: ["We're on the green, folks.", "On the green. One more hand and I'm buyin' a round.", "Green light, baby."],
+  greenYou: ["You're on the green. One good hand and it's ovah.", "On the green! Don't blow it now."],
+  winThem: ["Rack 'em up. Who's next?", "Ballgame. Better luck next time, guy.", "That's game. I'll take my winnings in Dunkin' gift cahds."],
+  winYou: ["Ballgame! You ran the table.", "That's game. Drinks are on the losahs.", "Wicked pissah. You won."],
+  loseYou: ["That's game. Not your night, kid.", "They got ya. Shake it off and deal again."],
+  banter: ["Who's buyin' the next round?", "Anybody see the Sox last night? Don't answer that.", "Somebody shut that jukebox off.", "Traffic on 93 was brutal tonight.", "Is it me or is it wicked hot in heah?", "Deal the cahds already, we ain't got all night.", "Nor'easter's comin', I'm tellin' ya.", "My cousin's buddy saw Kerouac in heah once. True story.", "I parked the cah in a snowbank. It's fine."]
+};
+
 const venueById = id => VENUES.find(v => v.id === id) || null;
 
 /* ---------- storage ---------- */
@@ -1183,6 +1239,8 @@ prefs.rules = Object.assign({}, RULE_DEFAULTS, prefs.rules || {});
 function savePrefs(){ save('ff.prefs', prefs); }
 if (prefs.venue == null) prefs.venue = '';
 if (prefs.sound == null) prefs.sound = true;
+if (prefs.talk == null) prefs.talk = true;
+if (!prefs.rulesV || prefs.rulesV < 2){ prefs.rules.allPass = 'dealerStuck'; prefs.rulesV = 2; }
 if (prefs.ambience == null) prefs.ambience = true;
 if (prefs.volume == null) prefs.volume = 0.7;
 Sound.configure(prefs);
@@ -1190,6 +1248,87 @@ window.FFSound = Sound;
 const SPEAKER_ON = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>';
 const SPEAKER_OFF = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M17 9l5 6M22 9l-5 6"/></svg>';
 const muteBtn = () => `<button class="btn ghost small iconbtn" data-act="mute" aria-pressed="${prefs.sound ? 'false' : 'true'}" aria-label="${prefs.sound ? 'Turn sound off' : 'Turn sound on'}" title="${prefs.sound ? 'Sound on' : 'Sound off'}">${prefs.sound ? SPEAKER_ON : SPEAKER_OFF}</button>`;
+/* ---------- table talk ---------- */
+const lastPick = {};
+function line(cat, vars){
+  const arr = TALK[cat]; if (!arr || !arr.length) return '';
+  let i = Math.floor(Math.random() * arr.length);
+  if (arr.length > 1 && i === lastPick[cat]) i = (i + 1) % arr.length;
+  lastPick[cat] = i;
+  return arr[i].replace(/\{(\w+)\}/g, (m, k) => vars && vars[k] != null ? vars[k] : m);
+}
+function say(seat, cat, vars){
+  if (!prefs.talk) return; const text = line(cat, vars); if (!text) return;
+  S.bubbles[seat] = {text, t:Date.now(), until:Date.now() + Math.max(2600, text.length * 75)};
+  clearTimeout(S.talkTimer);
+  const next = Math.min.apply(null, Object.values(S.bubbles).map(b => b.until));
+  S.talkTimer = setTimeout(() => { if (S.screen === 'table') render(); }, Math.max(150, next - Date.now() + 60));
+}
+function narrate(cat, vars){ if (!prefs.talk) return; const t = line(cat, vars); if (t){ S.narr = t; S.narrT = Date.now(); } }
+function humanTeams(){ const g = S.g; return new Set(S.cfg.seats.map((s, i) => s.human ? g.teams[i] : -1).filter(x => x >= 0)); }
+function talkLog(from){
+  const g = S.g; if (!g || !S.cfg) return;
+  const evs = g.log.slice(from), human = s => S.cfg.seats[s].human, nm = s => g.names[s];
+  const comps = g.teams.map((t, i) => i).filter(i => !human(i));
+  const oppOf = seat => comps.filter(i => g.teams[i] !== g.teams[seat]);
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const mine = humanTeams();
+  const ven = S.cfg.venue ? venueById(S.cfg.venue) : null;
+  for (const e of evs){
+    switch (e.t){
+      case 'deal':
+        S.bubbles = {}; S.booked = {};
+        if (g.handNo === 1) narrate(ven ? 'greetBar' : 'greetKitchen', {venue: ven ? ven.name : ''});
+        else { narrate('deal', {dealer: nm(e.dealer)}); if (comps.length && Math.random() < 0.35) say(pick(comps), 'banter'); }
+        break;
+      case 'bid': {
+        if (e.type === 'pass'){
+          if (!human(e.seat)){ if (Math.random() < 0.75) say(e.seat, 'pass'); }
+          else { const o = oppOf(e.seat); if (o.length && Math.random() < 0.3) say(pick(o), 'passReact'); }
+        } else if (e.type === 'hold'){ if (!human(e.seat)) say(e.seat, 'hold'); }
+        else {
+          const others = g.bidding.history.filter(h => h.seat !== e.seat);
+          const bagged = e.seat === g.dealer && others.length === g.n - 1 && others.every(h => h.type === 'pass');
+          if (bagged){ if (human(e.seat)) narrate('baggedYou'); else { say(e.seat, 'baggedSelf'); if (prefs.talk){ S.narr = nm(e.seat) + ' got bagged. Everybody passed, so the dealer\'s stuck with it.'; S.narrT = Date.now(); } } }
+          else if (!human(e.seat)) say(e.seat, e.value >= 30 ? 'bid30' : 'bid', {bid: e.value});
+          else { const o = oppOf(e.seat); if (o.length && Math.random() < 0.45) say(pick(o), 'bidReact', {bid: e.value}); }
+        }
+        break; }
+      case 'trump': { const sn = FF.SUIT_NAME[e.suit]; if (human(e.seat)) narrate('trumpYou', {suit: sn}); else say(e.seat, 'trump', {suit: sn}); break; }
+      case 'trick': {
+        const tr = g.tricks.length ? g.tricks[g.tricks.length - 1] : g.lastTrick; if (!tr) break;
+        const wc = tr.plays.find(p => p.seat === e.winner).card;
+        const big = FF.isTrump(wc, g.trump) && FF.trumpRank(wc, g.trump) >= 98;
+        if (big){ if (!human(e.winner)) say(e.winner, 'bigCard', {card: FF.cardLabel(wc)}); else { const o = oppOf(e.winner); if (o.length) say(pick(o), 'groan'); } }
+        else if (!human(e.winner) && Math.random() < 0.2) say(e.winner, 'trickSelf');
+        break; }
+      case 'handEnd': {
+        const r = g.result, bt = g.teams[e.bidder];
+        if (e.made){ if (mine.has(bt)) narrate(e.bid === 30 ? 'made30You' : 'madeYou'); else say(e.bidder, 'madeSelf'); }
+        else if (mine.has(bt)){ narrate('setYou'); const o = oppOf(e.bidder); if (o.length) say(pick(o), 'setRib'); }
+        else { say(e.bidder, 'setSelf'); const o = comps.filter(i => g.teams[i] !== bt); if (o.length && Math.random() < 0.6) say(pick(o), 'setRib'); }
+        const th = g.settings.target - 30;
+        if (g.phase !== 'gameOver') r.before.forEach((b, k) => { if (b < th && r.after[k] >= th){
+          if (mine.has(k)) narrate('greenYou'); else { const sp = comps.find(i => g.teams[i] === k); if (sp != null) say(sp, 'greenThem'); } } });
+        break; }
+      case 'gameOver': {
+        if (mine.has(e.winner)) narrate('winYou');
+        else { narrate('loseYou'); const sp = comps.find(i => g.teams[i] === e.winner); if (sp != null) say(sp, 'winThem'); }
+        break; }
+    }
+  }
+}
+/* "booked": every card in your hand is a trump */
+function checkBooked(){
+  const g = S.g;
+  for (let s = 0; s < g.n; s++){
+    if (g.hands[s].length === 5 && g.hands[s].every(c => FF.isTrump(c, g.trump)) && !S.cfg.seats[s].human){
+      S.booked[s] = true; say(s, 'booked');
+    }
+  }
+}
+const isBookedHand = seat => { const g = S.g; return g.phase === 'play' && g.tricks.length === 0 && g.hands[seat].length >= 4 && g.hands[seat].every(c => FF.isTrump(c, g.trump)); };
+
 /* play sounds for whatever just happened in the game log */
 function playLog(from){
   const g = S.g; if (!g) return;
@@ -1305,8 +1444,8 @@ function startGame(cfg, opts){
   S.cfg = cfg; S.g = g; S.sel = []; S.hint = null; S.hold = 0; S.handoff = null; S.recorded = false;
   S.handQ = null; S.unlocked = null; S.tourWon = false; S.tourFinal = false;
   S.arrival = opts.arrival ? {q:pickQ(), fresh:true} : null;
-  S.turnKey = null;
-  playLog(0);
+  S.turnKey = null; S.bubbles = {}; S.booked = {}; S.narr = ''; S.narrT = 0;
+  playLog(0); talkLog(0);
   S.viewer = cfg.seats.findIndex(s => s.human);
   S.screen = 'table';
   persist(); advance();
@@ -1315,7 +1454,7 @@ function persist(){ if (S.g && !S.cfg.practice && S.g.phase !== 'gameOver') save
 function resume(){
   const c = load('ff.current', null); if (!c) return;
   S.cfg = c.cfg; S.g = c.g; S.viewer = c.viewer || 0; S.rng = FF.mulberry32((Math.random() * 2147483647) | 0);
-  S.sel = []; S.hint = null; S.hold = 0; S.recorded = false; S.arrival = null; S.handQ = null;
+  S.sel = []; S.hint = null; S.hold = 0; S.recorded = false; S.arrival = null; S.handQ = null; S.bubbles = {}; S.booked = {}; S.narr = ''; S.narrT = 0;
   S.handoff = humans() > 1 ? FF.currentSeat(S.g) : null;
   S.screen = 'table'; advance();
 }
@@ -1350,7 +1489,8 @@ function act(a){
   const g = S.g, nt = g.tricks.length, prevPhase = g.phase, prevHand = g.handNo;
   const actor = FF.currentSeat(g), logFrom = g.log.length;
   try { FF.apply(g, a, S.rng); } catch(e){ toast(e.message); return; }
-  playLog(logFrom);
+  playLog(logFrom); talkLog(logFrom);
+  if (prevPhase !== 'play' && g.phase === 'play') checkBooked();
   S.sel = []; S.hint = null;
   if (g.tricks.length > nt || (prevPhase === 'play' && g.phase !== 'play')) S.hold = Date.now() + trickPause();
   if (prevPhase === 'bid' && g.phase === 'bid' && g.handNo !== prevHand) toast('Everyone passed. The deal moves to ' + g.names[g.dealer] + '.');
@@ -1509,7 +1649,7 @@ function setupView(){
   return `${topbar()}
   <div class="paper" style="display:flex;flex-direction:column;gap:16px">
     <div><div class="eyebrow">${info.who}</div><h2>${info.title}</h2><p class="soft" style="margin-top:4px">${info.desc} Seats set to Person share this device: the game hides each hand until that player taps in.</p></div>
-    ${st.mode === 'cutthroat' ? `<div class="row"><span style="font-weight:700">Players</span><span class="seg"><button class="${st.n===3?'on':''}" data-act="ctn" data-v="3">3</button><button class="${st.n===4?'on':''}" data-act="ctn" data-v="4">4</button></span></div>` : ''}
+    ${st.mode === 'cutthroat' ? `<div class="row"><span style="font-weight:700">Players</span><span class="seg"><button class="${st.n===3?'on':''}" data-act="ctn" data-v="3">3</button><button class="${st.n===4?'on':''}" data-act="ctn" data-v="4">4</button><button class="${st.n===5?'on':''}" data-act="ctn" data-v="5">5</button></span></div>` : ''}
     <div class="seats">${rows}</div>
     ${allOpen() ? `<div class="row">${venueSelect('svenue')}</div>` : ''}
     <div class="row"><button class="btn paperbtn" data-act="startsetup">Deal the cards</button><span class="soft" style="font-size:14px">First to ${prefs.rules.target} wins. House rules are under Rules.</span></div>
@@ -1517,7 +1657,7 @@ function setupView(){
 }
 
 /* ---------- table ---------- */
-function posMap(n){ return n === 4 ? ['s','w','n','e'] : n === 3 ? ['s','w','e'] : ['s','n']; }
+function posMap(n){ return n === 5 ? ['s','w','nw','ne','e'] : n === 4 ? ['s','w','n','e'] : n === 3 ? ['s','w','e'] : ['s','n']; }
 function seatPos(seat){ const g = S.g; return posMap(g.n)[(seat - S.viewer + g.n) % g.n]; }
 
 function tableView(){
@@ -1539,21 +1679,22 @@ function tableView(){
     seats += `<div class="seat pos-${p} ${cur === s && g.phase !== 'handOver' && g.phase !== 'gameOver' ? 'active' : ''}">
       ${p !== 's' ? `<div class="backs" aria-label="${nCards} cards">${Array.from({length:Math.min(nCards,8)}, () => backHTML('tiny')).join('')}</div>` : ''}
       <span class="plate"><span class="dot" style="background:${teamColor(g.teams[s])}"></span><span class="nm">${esc(g.names[s])}</span></span>
-      <span class="chips">${g.dealer === s ? '<span class="chip">Dealer</span>' : ''}${bidOf(s)}${g.phase === 'play' || showLast || g.phase === 'handOver' ? (tricks ? `<span class="chip">${tricks} trick${tricks>1?'s':''}</span>` : '') : ''}${g.phase === 'play' && g.drawCount[s] != null && g.tricks.length === 0 ? `<span class="chip">drew ${g.drawCount[s]}</span>` : ''}</span>
+      <span class="chips">${g.dealer === s ? '<span class="chip">Dealer</span>' : ''}${S.booked && S.booked[s] ? '<span class="chip gold">Booked</span>' : ''}${bidOf(s)}${g.phase === 'play' || showLast || g.phase === 'handOver' ? (tricks ? `<span class="chip">${tricks} trick${tricks>1?'s':''}</span>` : '') : ''}${g.phase === 'play' && g.drawCount[s] != null && g.tricks.length === 0 ? `<span class="chip">drew ${g.drawCount[s]}</span>` : ''}</span>
+      ${(() => { const b = S.bubbles && S.bubbles[s]; return b && b.until > Date.now() ? `<div class="bubble ${p === 's' ? 'up' : 'down'} ${Date.now() - b.t < 350 ? 'new' : ''}">${esc(b.text)}</div>` : ''; })()}
     </div>`;
   }
 
   // center
   const trickCards = showLast ? g.lastTrick.plays : g.trick;
   const winSeat = showLast ? g.lastTrick.winner : -1;
-  const slots = {n:'',s:'',w:'',e:''};
+  const slots = {n:'',s:'',w:'',e:'',nw:'',ne:''};
   trickCards.forEach(p => { slots[seatPos(p.seat)] = cardHTML(p.card, {trump: t && FF.isTrump(p.card, t), win: p.seat === winSeat}); });
   let mid = '';
   if (g.phase === 'bid') mid = `<div class="backs">${backHTML('mini')}${backHTML('mini')}${backHTML('mini')}</div><span>Kitty</span><span>High bid: <b style="color:var(--chalk)">${g.bidding.high || '—'}</b></span>`;
   else if (t) mid = `<div class="trumpbadge ${FF.RED[t]?'red':'blk'}" title="Trump">${SYM[t]}</div><span>Trump<br>${SNAME[t]}</span>`;
   else mid = `<span>${esc(g.names[g.bidder])} is naming trump</span>`;
   if (showLast) mid += `<span style="color:var(--gold);font-weight:700">${esc(g.names[winSeat])} wins</span>`;
-  const center = `<div class="center"><div class="slot n">${slots.n}</div><div class="slot w">${slots.w}</div><div class="mid">${mid}</div><div class="slot e">${slots.e}</div><div class="slot s">${slots.s}</div></div>`;
+  const center = `<div class="center"><div class="slot n">${slots.n}</div><div class="slot w">${slots.w}</div><div class="mid">${mid}</div><div class="slot e">${slots.e}</div><div class="slot s">${slots.s}</div><div class="slot nw">${slots.nw}</div><div class="slot ne">${slots.ne}</div></div>`;
 
   // my hand
   const hand = S.handoff ? [] : sortHand(g.hands[v], t);
@@ -1577,11 +1718,12 @@ function tableView(){
 
   const ven = cfg.venue ? venueById(cfg.venue) : null;
   return `${topbar(`<button class="btn ghost small" data-act="go" data-to="rules">Rules</button>`)}
-  <div class="game">
+  <div class="game ${g.n === 5 ? 'five' : ''}">
     <div class="felt">
       ${ven ? signHTML(ven) : ''}
       ${status}
-      <div class="table ${g.n === 2 ? 'two' : ''}">${seats}${center}</div>
+      <div class="table ${g.n === 2 ? 'two' : g.n === 5 ? 'five' : ''}">${seats}${center}</div>
+      ${prefs.talk && S.narr ? `<div class="talk ${Date.now() - S.narrT < 400 ? 'new' : ''}" role="status"><span class="who">${cfg.venue ? 'From the rail' : 'Peanut gallery'}</span><span class="say">${esc(S.narr)}</span></div>` : ''}
       <div class="ticker">${ticker}</div>
       <div class="handwrap"><div class="hand" style="--cw:${cw};--ov:${ov}">${handHTML}</div></div>
       ${actionsView(myTurn, cur, showLast)}
@@ -1605,7 +1747,7 @@ function actionsView(myTurn, cur, showLast){
     const acts = FF.legalBidActions(g), b = g.bidding;
     const dealer = g.dealer === v;
     const sub = b.stage === 'duel' ? (dealer ? `${esc(g.names[b.challenger])} raised to ${b.high}. Hold, raise, or let it go.` : `${esc(g.names[g.dealer])} (dealer) is holding at ${b.high}. Raise or pass.`)
-      : dealer ? (b.high ? `High bid is ${b.high} by ${esc(g.names[b.highBidder])}. ${g.settings.dealerHold ? 'As dealer you can hold it.' : 'You bid last: go higher or pass.'}` : (g.settings.allPass === 'dealerStuck' ? 'Everyone passed. As dealer you must bid.' : 'Everyone passed. Take it at 15 or pass the deal.'))
+      : dealer ? (b.high ? `High bid is ${b.high} by ${esc(g.names[b.highBidder])}. ${g.settings.dealerHold ? 'As dealer you can hold it.' : 'You bid last: go higher or pass.'}` : (g.settings.allPass === 'dealerStuck' ? "Everyone passed. You've been bagged, so you must bid." : 'Everyone passed. Take it at 15 or pass the deal.'))
       : b.high ? `High bid is ${b.high} by ${esc(g.names[b.highBidder])}. Bid higher or pass; you get one chance.` : 'Nobody has bid yet. Bid 15 or more, or pass.';
     body = `<div class="prompt">Your bid</div><div class="sub">${sub}</div><div class="bidbtns">${acts.map(a =>
       `<button class="btn ${a.type==='pass'?'ghost':''}" data-act="bid" data-type="${a.type}" data-value="${a.value||''}">${a.type==='pass'?'Pass':a.type==='hold'?'Hold '+b.high:a.value}</button>`).join('')}</div>`;
@@ -1634,14 +1776,16 @@ function actionsView(myTurn, cur, showLast){
     }
     body = `<div class="prompt">${lead ? 'Your lead' : 'Your turn'}: tap a card</div><div class="sub">${sub}</div>`;
   }
-  return `<div class="actions">${body}${hintBox}<div class="row">${hintBtn}</div></div>`;
+  const bookBtn = g.phase === 'play' && isBookedHand(v) && !(S.booked && S.booked[v]) ? `<button class="btn small" data-act="book">Announce: I'm booked</button>` : '';
+  return `<div class="actions">${body}${hintBox}<div class="row">${bookBtn}${hintBtn}</div></div>`;
 }
 
 function padView(){
   const g = S.g, nt = g.nTeams;
   const cols = `grid-template-columns:repeat(${nt}, minmax(0,1fr))`;
   let cells = '';
-  for (let k = 0; k < nt; k++) cells += `<div class="hd"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${teamColor(k)};margin-right:5px"></span>${esc(teamName(k))}</div>`;
+  const th = g.settings.target - 30;
+  for (let k = 0; k < nt; k++) cells += `<div class="hd"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${teamColor(k)};margin-right:5px"></span>${esc(teamName(k))}${g.scores[k] >= th ? '<span class="gr">On the green</span>' : ''}</div>`;
   const hist = g.results.slice(-9);
   hist.forEach((r, i) => {
     for (let k = 0; k < nt; k++){
@@ -1651,8 +1795,8 @@ function padView(){
     }
   });
   if (!hist.length) for (let k = 0; k < nt; k++) cells += `<div class="v cur">0</div>`;
-  return `<aside class="pad" aria-label="Score pad"><h3>Score pad</h3><div class="padcols" style="${cols}">${cells}</div>
-    <div class="padnote">Game to ${g.settings.target}. Crossed-out numbers are old totals; ✗ marks a set.</div></aside>`;
+  return `<aside class="pad" aria-label="Score pad"><h3>Score pad</h3><div class="padcols ${nt >= 4 ? 'many' : ''}" style="${cols}">${cells}</div>
+    <div class="padnote">Game to ${g.settings.target}. ${g.settings.target - 30} or more is on the green. Crossed-out numbers are old totals; ✗ marks a set.</div></aside>`;
 }
 
 /* ---------- overlays ---------- */
@@ -1712,7 +1856,7 @@ function layerView(){
 }
 
 /* ---------- learn ---------- */
-const LESSONS = ['The cards','Which card wins?','Bidding & the kitty','The draw','Playing & reneging','Renege drill','Scoring','Coached hand'];
+const LESSONS = ['The cards','Which card wins?','Bidding & the kitty','The draw','Playing & reneging','Renege drill','Scoring','Table lingo','Coached hand'];
 function learnView(){
   const nav = LESSONS.map((t, i) => `<button class="${S.lesson === i ? 'on' : ''}" data-act="lesson" data-i="${i}"><i>${i + 1}</i>${t}</button>`).join('');
   return `${topbar()}<div class="lessons"><nav class="lnav" aria-label="Lessons">${nav}</nav><div class="paper lesson">${lessonBody(S.lesson)}
@@ -1737,7 +1881,7 @@ function lessonBody(i){
       <p>The dealer gives each player 3 cards, puts 3 face down in the middle as the <b>kitty</b>, then gives everyone 2 more.</p>
       <ul><li>Bidding starts left of the dealer and goes around once. Each player bids in fives from 15 to 30, or passes. Nobody says a suit while bidding.</li>
       <li>Every bid must be <b>higher</b> than the one before it. Nobody can match a bid, the dealer included. The dealer bids last.${prefs.rules.dealerHold ? ' Your table has switched on the dealer hold under house rules: the dealer may take the high bid at the same number, and the high bidder can then raise.' : ''}</li>
-      <li>If everyone passes, the dealer can take it at 15 or pass the deal along.</li>
+      <li>If everyone passes, the dealer is <b>bagged</b> and must bid at least 15.</li>
       <li>The winner names trump and picks up the kitty, holding 8 cards. They throw away face down: any or all of the kitty, plus up to ${prefs.rules.maxDraw} of their own cards, at least 3 in all. In their turn of the draw, the dealer deals them back up to 5.</li></ul>
       <div class="example"><b>Example.</b> Rita bids 15. Normand can't say 15 too, so he passes. Pauline bids 20. You're dealer, so you speak last: bid 25 or 30 to take it, or pass and Pauline has it at 20.</div>
       <p>What is a bid worth? Each trick is 5 points and the highest trump played is 5 more, so a hand has 30 points in it. Bid what you think your side will take.</p>`;
@@ -1759,7 +1903,15 @@ function lessonBody(i){
       <li>The other side always scores what it took.</li>
       <li>First to <b>${prefs.rules.target}</b> wins. If both sides pass ${prefs.rules.target} on the same hand, the bidders win.</li></ul>
       <div class="example"><b>Example.</b> You bid 20 and take 3 tricks plus the highest trump: 15 + 5 = 20. You made it and score 20; the other side scores its 10. Had you bid 25, you'd lose 25 and they'd still score 10.</div>`;
-    case 7: return `<div class="eyebrow">Lesson 8</div><h2>Coached hand</h2>
+    case 7: return `<div class="eyebrow">Lesson 8</div><h2>Table lingo</h2>
+      <p>Sit down at a Merrimack Valley table and you'll hear these.</p>
+      <ul><li><b>Bagging the dealer.</b> Everyone passes, so the dealer is forced to bid. "They bagged me again."</li>
+      <li><b>Booked.</b> Every card in your hand is a trump. Some players announce it as a courtesy, so the others know they don't have a chance.</li>
+      <li><b>On the green.</b> Your side has ${prefs.rules.target - 30} or more, so one more good hand can end the game.</li>
+      <li><b>Set.</b> The bidders didn't take their bid, so it comes off their score.</li>
+      <li><b>Renege.</b> Holding back the 5, Jack or Ace of Hearts when a lower trump is led.</li>
+      <li><b>Kitty.</b> The 3 face-down cards the bidder picks up.</li></ul>`;
+    case 8: return `<div class="eyebrow">Lesson 9</div><h2>Coached hand</h2>
       <p>Play a full game with Rita as your partner against Normand and Pauline. The coach suggests every move and explains why, and the suggested cards are outlined in gold. Practice games don't count toward standings.</p>
       <div class="row"><button class="btn paperbtn" data-act="coached">Start the coached game</button></div>`;
   }
@@ -1876,7 +2028,7 @@ function rulesView(){
       <ul>
         <li><b>Deal.</b> 5 cards each, dealt 3 then 2, with 3 face down to the kitty in between.</li>
         <li><b>Rank.</b> Trump runs 5, J, A♥, A, K, Q, then high in red and low in black. The A♥ is always trump. Off-suit: K, Q, J, then red 10 to 2 with A♦ last, black A, 2 up to 10.</li>
-        <li><b>Bid.</b> One bid each from the dealer's left, 15 to 30 in fives. Each bid must top the last one; nobody can match it, the dealer included. No suit is named until bidding ends.</li>
+        <li><b>Bid.</b> One bid each from the dealer's left, 15 to 30 in fives. Each bid must top the last one; nobody can match it, the dealer included. If everyone passes, the dealer is bagged and must bid. No suit is named until bidding ends.</li>
         <li><b>Kitty.</b> The winner names trump and takes the kitty. They may toss the whole kitty plus up to ${r.maxDraw} of their own cards (at least 3 in all), face down, and are dealt back to 5 in their turn of the draw.</li>
         <li><b>Draw.</b> Each player throws away up to ${r.maxDraw} and draws replacements.</li>
         <li><b>Play.</b> The bidder leads. Trump led means you play trump if you can; the 5, J and A♥ may renege against a lower trump. On an off-suit lead, any card may be played.</li>
@@ -1887,7 +2039,7 @@ function rulesView(){
       <div class="eyebrow">Your table</div><h2>House rules</h2><p class="soft" style="font-size:14px">Changes apply to the next game you start.</p>
       <div class="setgrid">
         <div class="field"><label for="followSuit">Off-suit lead</label>${sel('followSuit', [['free','Any card (Merrimack Valley)'],['followOrTrump','Follow suit or trump']], r.followSuit)}</div>
-        <div class="field"><label for="allPass">Everyone passes</label>${sel('allPass', [['dealerChoice','Dealer takes 15 or passes the deal'],['dealerStuck','Dealer must take it']], r.allPass)}</div>
+        <div class="field"><label for="allPass">Everyone passes</label>${sel('allPass', [['dealerStuck','Dealer is bagged and must bid'],['dealerChoice','Dealer may pass the deal']], r.allPass)}</div>
         <div class="field"><label for="leader">First lead</label>${sel('leader', [['bidder','Bidder leads'],['leftOfDealer','Left of dealer leads']], r.leader)}</div>
         <div class="field"><label for="maxDraw">Most cards in the draw</label>${sel('maxDraw', [[3,'3'],[4,'4'],[5,'5']], r.maxDraw)}</div>
         <div class="field"><label for="target">Game to</label>${sel('target', [[120,'120'],[100,'100'],[150,'150']], r.target)}</div>
@@ -1897,7 +2049,8 @@ function rulesView(){
       ${chk('thirtyForSixty', '30 for 60', 'A made bid of 30 scores 60.')}
       ${chk('mustBidOut', 'Must bid to go out', 'A side can only reach the winning score on its own bid.')}
       <div class="row"><button class="btn ghost" data-act="ruledefaults">Restore Merrimack Valley defaults</button></div>
-      <h3 style="margin-top:6px">Sound</h3>
+      <h3 style="margin-top:6px">Table talk &amp; sound</h3>
+      <label class="check"><input type="checkbox" id="ptalk" data-bind="talkcheck" ${prefs.talk ? 'checked' : ''}><span><b>Table talk</b><br><span class="soft">The regulars run their mouths and the peanut gallery chimes in.</span></span></label>
       <label class="check"><input type="checkbox" id="psound" data-bind="prefcheck" data-k="sound" ${prefs.sound ? 'checked' : ''}><span><b>Game sounds</b><br><span class="soft">Shuffling, cards hitting the felt, knocks for a pass, and more.</span></span></label>
       <label class="check"><input type="checkbox" id="pamb" data-bind="prefcheck" data-k="ambience" ${prefs.ambience ? 'checked' : ''}><span><b>Bar ambience</b><br><span class="soft">Crowd murmur and clinking glasses when you play at one of the bars.</span></span></label>
       <div class="field"><label for="pvol">Volume</label><input type="range" id="pvol" data-bind="volume" min="0" max="1" step="0.05" value="${prefs.volume}"></div>
@@ -1926,6 +2079,8 @@ document.addEventListener('click', e => {
     case 'seat': S.arrival = null; advance(); break;
     case 'triv': { const T = el.dataset.where === 'arrival' ? S.arrival.q : S.handQ; if (!T || T.pick != null) break;
       T.pick = +el.dataset.k; tour.asked++; if (T.opts[T.pick] === T.right){ tour.right++; Sound.right(); } else Sound.wrong(); saveTour(); render(); break; }
+    case 'book': { const v = S.viewer; S.booked[v] = true; narrate('bookedYou', {name: S.g.names[v]});
+      const o = S.g.teams.map((t, i) => i).filter(i => !S.cfg.seats[i].human && S.g.teams[i] !== S.g.teams[v]); if (o.length) say(o[Math.floor(Math.random() * o.length)], 'bookedGroan'); render(); break; }
     case 'mute': prefs.sound = !prefs.sound; savePrefs(); Sound.configure(prefs); render(); if (prefs.sound) Sound.bid(20); break;
     case 'reveal': S.handoff = null; advance(); break;
     case 'next': S.hint = null; S.handQ = null; act({type:'next'}); break;
@@ -1968,6 +2123,7 @@ document.addEventListener('change', e => {
   else if (b === 'rule'){ const k = el.dataset.k; prefs.rules[k] = (k === 'maxDraw' || k === 'target') ? +el.value : el.value; savePrefs(); }
   else if (b === 'rulecheck'){ prefs.rules[el.dataset.k] = el.checked; savePrefs(); }
   else if (b === 'prefcheck'){ prefs[el.dataset.k] = el.checked; savePrefs(); Sound.configure(prefs); }
+  else if (b === 'talkcheck'){ prefs.talk = el.checked; savePrefs(); }
   else if (b === 'volume'){ prefs.volume = +el.value; savePrefs(); Sound.configure(prefs); Sound.bid(20); }
 });
 document.addEventListener('input', e => {
