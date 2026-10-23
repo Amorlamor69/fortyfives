@@ -250,6 +250,11 @@ table.res th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:
 .stand td,.stand th{white-space:nowrap}
 .empty{padding:22px;text-align:center;color:var(--ink-soft)}
 .iconbtn{padding:6px 10px;display:inline-flex;align-items:center;justify-content:center}
+.sndpanel{position:fixed;z-index:40;top:calc(60px + env(safe-area-inset-top, 0px));right:max(16px, env(safe-area-inset-right, 0px));width:min(320px, calc(100vw - 32px));background:var(--paper);color:var(--ink);border-radius:10px;padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 20px 50px -18px rgba(0,0,0,.85)}
+.sndpanel .sphead{display:flex;justify-content:space-between;align-items:center;font-family:var(--f-display);font-size:19px}
+.sndpanel .btn.ghost{color:var(--ink);box-shadow:inset 0 0 0 2px var(--paper-edge)}
+.sndpanel .soft{color:var(--ink-soft);font-size:13px}
+.sndpanel .spv{font-size:13px;font-weight:700;color:var(--ink-soft);margin-bottom:-6px}
 .namebar .spacer{flex:1}
 input[type=range]{accent-color:var(--red);width:100%;max-width:280px}
 .foot{color:var(--chalk-soft);font-size:13px;text-align:center}
@@ -1030,7 +1035,7 @@ const TRIVIA = [
 /* Forty-Fives sounds. Everything is synthesized with the Web Audio API: no audio files. */
 const Sound = (function(){
   let ctx = null, master = null, sfxBus = null, ambBus = null, noiseBuf = null;
-  let enabled = true, ambOn = true, volume = 0.7, ambWanted = false, amb = null;
+  let enabled = true, ambOn = true, volume = 0.7, ambVol = 0.6, ambWanted = null, amb = null;
 
   function ensure(){
     if (ctx) return ctx;
@@ -1053,6 +1058,7 @@ const Sound = (function(){
     syncAmbience();
   }
   const ready = () => ctx && ctx.state === 'running' && enabled;
+  const live = () => ctx && ctx.state === 'running';
   const now = () => ctx.currentTime;
 
   function noise(t, dur, o){
@@ -1140,39 +1146,172 @@ const Sound = (function(){
     toss(n){ if (!ready()) return; for (let i = 0; i < Math.min(n, 7); i++) noise(now() + i * 0.06, 0.06, {freq: 1500, q: 0.7, gain: 0.14}); }
   };
 
-  /* ---------- bar ambience: crowd murmur plus the odd glass clink ---------- */
-  function startAmbience(){
-    if (amb || !ctx) return;
-    const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 520;
-    const bp = ctx.createBiquadFilter(); bp.type = 'peaking'; bp.frequency.value = 300; bp.gain.value = 6;
-    const g = ctx.createGain(); g.gain.value = 0.22;
-    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.17; const lfoG = ctx.createGain(); lfoG.gain.value = 0.08;
-    lfo.connect(lfoG); lfoG.connect(g.gain);
-    src.connect(lp); lp.connect(bp); bp.connect(g); g.connect(ambBus);
-    src.start(); lfo.start();
-    amb = {src, lfo, timer: null};
-    const clink = () => {
-      if (!amb) return;
-      if (ctx.state === 'running'){
-        const t = now(), f = 2400 + Math.random() * 1600;
-        tone(t, f, 0.5, {gain: 0.035, bus: ambBus}); tone(t + 0.01, f * 1.5, 0.3, {gain: 0.02, bus: ambBus});
-      }
-      amb.timer = setTimeout(clink, 5000 + Math.random() * 11000);
-    };
-    amb.timer = setTimeout(clink, 3000);
+  /* ---------- bar ambience ----------
+     Every bar has its own room: murmured voices you can't make out, glasses, bottles,
+     footsteps and chairs, plus a few sounds particular to the place. */
+  const VOWELS = [[270,2290],[390,1990],[530,1840],[660,1720],[730,1090],[570,840],[440,1020],[300,870],[640,1190]];
+  const AMB = {
+    lightship:   {room:1.8, voices:4, muffle:1100, pitch:[95,190], clink:9,  foot:7,  chair:30, laugh:40, extras:{creak:14, foghorn:70}},
+    donknights:  {room:1.2, voices:3, muffle:950,  pitch:[85,150], clink:14, foot:16, chair:40, laugh:70, extras:{pool:9}},
+    cozycorner:  {room:0.7, voices:3, muffle:1500, pitch:[100,210],clink:10, foot:14, chair:30, laugh:45, extras:{tv:1, register:35, doorbell:55}},
+    colonial:    {room:1.4, voices:4, muffle:1150, pitch:[95,200], clink:11, foot:12, chair:35, laugh:50, extras:{fire:1, clock:1}},
+    theater:     {room:2.4, voices:6, muffle:1000, pitch:[100,230],clink:8,  foot:10, chair:25, laugh:30, extras:{piano:7, applause:60}},
+    lamplighters:{room:1.3, voices:4, muffle:1100, pitch:[95,200], clink:10, foot:12, chair:30, laugh:40, extras:{rain:1}},
+    buckos:      {room:1.5, voices:7, muffle:1300, pitch:[95,230], clink:5,  foot:7,  chair:16, laugh:14, extras:{pool:8, jukebox:1}},
+    unceddies:   {room:1.1, voices:5, muffle:1250, pitch:[95,210], clink:7,  foot:10, chair:22, laugh:22, extras:{tv:1, cheer:40, register:40}},
+    claddagh:    {room:1.6, voices:7, muffle:1200, pitch:[100,230],clink:5,  foot:8,  chair:18, laugh:12, extras:{whistle:16}},
+    halcyon:     {room:2.0, voices:4, muffle:900,  pitch:[90,190], clink:7,  foot:18, chair:45, laugh:60, extras:{jazz:1, ice:9}}
+  };
+  const rnd = (a, b) => a + Math.random() * (b - a);
+
+  function makeRoom(seconds){
+    const len = Math.floor(ctx.sampleRate * seconds), buf = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++){ const d = buf.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6); }
+    const input = ctx.createGain(), dry = ctx.createGain(), wet = ctx.createGain(), conv = ctx.createConvolver();
+    conv.buffer = buf; input.gain.value = 8; dry.gain.value = 0.55; wet.gain.value = 0.5;
+    input.connect(dry); dry.connect(ambBus); input.connect(conv); conv.connect(wet); wet.connect(ambBus);
+    return {input, nodes: [input, dry, wet, conv]};
+  }
+  /* one murmuring voice: a buzzy source shaped by two vowel filters, muffled so no words come through */
+  function makeVoice(A, room){
+    const osc = ctx.createOscillator(); osc.type = 'sawtooth';
+    const base = rnd(A.pitch[0], A.pitch[1]); osc.frequency.value = base;
+    const breath = ctx.createBufferSource(); breath.buffer = noiseBuf; breath.loop = true;
+    const bg = ctx.createGain(); bg.gain.value = 0.25;
+    const f1 = ctx.createBiquadFilter(); f1.type = 'bandpass'; f1.Q.value = 7;
+    const f2 = ctx.createBiquadFilter(); f2.type = 'bandpass'; f2.Q.value = 9;
+    const env = ctx.createGain(); env.gain.value = 0;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = A.muffle * rnd(0.85, 1.15);
+    const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+    osc.connect(f1); osc.connect(f2); breath.connect(bg); bg.connect(f1); bg.connect(f2);
+    f1.connect(env); f2.connect(env); env.connect(lp);
+    if (pan){ pan.pan.value = rnd(-0.8, 0.8); lp.connect(pan); pan.connect(room.input); } else lp.connect(room.input);
+    osc.start(); breath.start(0, rnd(0, 1.5));
+    return {osc, breath, f1, f2, env, base, level: rnd(0.05, 0.12), talking: false, until: 0, laugh: 0,
+      nodes: [osc, breath, bg, f1, f2, env, lp].concat(pan ? [pan] : [])};
+  }
+  function tickVoice(v, t){
+    if (v.laugh > 0){
+      v.laugh--; const on = v.laugh % 2 === 0;
+      v.osc.frequency.setTargetAtTime(v.base * (on ? 1.55 : 1.4), t, 0.02);
+      v.f1.frequency.setTargetAtTime(750, t, 0.02); v.f2.frequency.setTargetAtTime(1200, t, 0.02);
+      v.env.gain.setTargetAtTime(on ? v.level * 1.3 : v.level * 0.15, t, 0.02);
+      return;
+    }
+    if (t > v.until){
+      v.talking = !v.talking;
+      v.until = t + (v.talking ? rnd(1.2, 4.5) : rnd(0.4, 3));
+      if (!v.talking){ v.env.gain.setTargetAtTime(0, t, 0.12); return; }
+    }
+    if (!v.talking) return;
+    if (Math.random() < 0.28){ v.env.gain.setTargetAtTime(v.level * 0.12, t, 0.03); return; }
+    const vw = VOWELS[Math.floor(Math.random() * VOWELS.length)], k = v.base > 150 ? 1.15 : 1;
+    v.f1.frequency.setTargetAtTime(vw[0] * k, t, 0.04); v.f2.frequency.setTargetAtTime(vw[1] * k, t, 0.04);
+    v.osc.frequency.setTargetAtTime(v.base * rnd(0.88, 1.18), t, 0.06);
+    v.env.gain.setTargetAtTime(v.level * rnd(0.45, 1), t, 0.03);
+  }
+
+  /* one-shot room sounds; `out` is the room input */
+  function clink(out){ const t = now(), f = rnd(2300, 3900);
+    tone(t, f, rnd(0.25, 0.6), {gain: rnd(0.02, 0.045), bus: out}); tone(t + 0.003, f * 2.76, 0.18, {gain: 0.012, bus: out});
+    if (Math.random() < 0.35){ const t2 = t + rnd(0.05, 0.12); tone(t2, f * rnd(0.9, 1.1), 0.35, {gain: 0.02, bus: out}); } }
+  function bottle(out){ const t = now();
+    tone(t, rnd(110, 160), 0.12, {gain: 0.08, to: 70, bus: out}); noise(t, 0.05, {type: 'lowpass', freq: 600, gain: 0.06, bus: out});
+    tone(t + 0.01, rnd(1400, 2000), 0.2, {gain: 0.015, bus: out}); }
+  function footsteps(out, hollow){ const t0 = now(), n = Math.floor(rnd(4, 9)), gap = rnd(0.48, 0.62);
+    for (let i = 0; i < n; i++){ const t = t0 + i * gap, g = 0.05 * Math.sin(Math.PI * (i + 1) / (n + 1));
+      noise(t, 0.08, {type: 'lowpass', freq: hollow ? 380 : 260, gain: g + 0.01, bus: out});
+      noise(t + 0.06, 0.05, {type: 'bandpass', freq: hollow ? 900 : 1500, q: 1.5, gain: (g + 0.01) * 0.35, bus: out}); } }
+  function chair(out){ const t = now(), src = ctx.createBufferSource(); src.buffer = noiseBuf;
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 6; f.frequency.setValueAtTime(rnd(300, 500), t); f.frequency.linearRampToValueAtTime(rnd(700, 1100), t + 0.35);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.06, t + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t + rnd(0.3, 0.5));
+    src.connect(f); f.connect(g); g.connect(out); src.start(t, rnd(0, 1)); src.stop(t + 0.6); }
+  function poolShot(out){ const t = now();
+    noise(t, 0.02, {type: 'highpass', freq: 3000, gain: 0.08, bus: out}); tone(t, 2600, 0.04, {gain: 0.05, bus: out});
+    const k = Math.floor(rnd(1, 4)); for (let i = 1; i <= k; i++){ const tt = t + rnd(0.15, 0.9) * i * 0.6; tone(tt, rnd(2000, 3000), 0.035, {gain: 0.035 / i, bus: out}); noise(tt, 0.015, {type: 'highpass', freq: 2500, gain: 0.04 / i, bus: out}); }
+    if (Math.random() < 0.5) noise(t + rnd(1, 1.6), 0.12, {type: 'lowpass', freq: 300, gain: 0.05, bus: out}); }
+  function creak(out){ const t = now();
+    tone(t, rnd(70, 110), rnd(0.5, 0.9), {type: 'sawtooth', gain: 0.025, lp: 500, to: rnd(90, 140), glide: 0.7, attack: 0.15, bus: out}); }
+  function foghorn(out){ const t = now();
+    tone(t, 82, 2.6, {type: 'sawtooth', gain: 0.03, lp: 260, attack: 0.5, bus: out}); tone(t, 123, 2.6, {type: 'sawtooth', gain: 0.012, lp: 260, attack: 0.5, bus: out}); }
+  function register(out){ const t = now();
+    for (let i = 0; i < 4; i++) noise(t + i * 0.05, 0.03, {type: 'highpass', freq: 2000, gain: 0.03, bus: out});
+    tone(t + 0.25, 2093, 0.9, {gain: 0.03, bus: out}); tone(t + 0.25, 3136, 0.6, {gain: 0.015, bus: out}); }
+  function doorbell(out){ const t = now();
+    for (let i = 0; i < 5; i++) tone(t + i * 0.07 + rnd(0, 0.03), rnd(2600, 3600), 0.4, {gain: 0.018, bus: out}); }
+  function applause(out){ const t0 = now(), n = 60;
+    for (let i = 0; i < n; i++){ const t = t0 + rnd(0, 2.2), env = Math.sin(Math.PI * ((t - t0) / 2.2)); noise(t, 0.03, {freq: rnd(1500, 3500), q: 1.5, gain: 0.02 * env + 0.002, bus: out}); } }
+  function cheer(out){ const t = now(), src = ctx.createBufferSource(); src.buffer = noiseBuf;
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = 0.8;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1400;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05, t + 0.6); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.4);
+    src.connect(f); f.connect(lp); lp.connect(g); g.connect(out); src.start(t, rnd(0, 1)); src.stop(t + 2.5); }
+  const PIANO = [[146.83,174.61,220,261.63],[196,246.94,293.66,349.23],[130.81,164.81,196,246.94],[110,130.81,164.81,196]];
+  let chordIx = 0;
+  function piano(out, soft){ const t = now(), ch = PIANO[chordIx++ % PIANO.length];
+    ch.forEach((f, i) => { tone(t + i * (soft ? 0.03 : 0.015), f * (soft ? 2 : 2), soft ? 2.6 : 1.8, {type: 'triangle', gain: soft ? 0.018 : 0.022, lp: soft ? 1100 : 1600, bus: out}); });
+    if (!soft && Math.random() < 0.6){ const m = [523.25, 587.33, 659.25, 783.99, 880]; for (let i = 0; i < 3; i++) tone(t + 0.4 + i * 0.28, m[Math.floor(Math.random() * m.length)], 0.5, {type: 'triangle', gain: 0.014, lp: 2000, bus: out}); } }
+  function whistle(out){ const t0 = now(), sc = [587.33, 659.25, 739.99, 880, 987.77, 1174.66];
+    let t = t0; for (let i = 0; i < 6; i++){ const d = Math.random() < 0.3 ? 0.36 : 0.18; tone(t, sc[Math.floor(Math.random() * sc.length)], d + 0.05, {gain: 0.01, lp: 2400, attack: 0.02, bus: out}); t += d; } }
+  function ice(out){ const t = now(); for (let i = 0; i < 4; i++) tone(t + rnd(0, 0.25), rnd(3500, 5500), 0.12, {gain: 0.012, bus: out}); }
+
+  /* continuous beds: TV, fireplace, clock, rain, jukebox, jazz */
+  function startBeds(A, room, a){
+    const ex = A.extras;
+    if (ex.tv){ const tv = makeVoice({pitch: [120, 140], muffle: 700}, room); tv.level = 0.05; a.voices.push(tv); a.tv = tv; }
+    if (ex.fire){ const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 300; const g = ctx.createGain(); g.gain.value = 0.05;
+      src.connect(f); f.connect(g); g.connect(room.input); src.start(); a.nodes.push(src, f, g);
+      a.loops.push(() => { for (let i = 0; i < 3; i++) if (Math.random() < 0.5) noise(now() + rnd(0, 0.12), 0.01, {type: 'highpass', freq: 2500, gain: rnd(0.01, 0.04), bus: room.input}); }); }
+    if (ex.clock) a.loops.push((tick) => { if (tick % 9 === 0) noise(now(), 0.012, {freq: tick % 18 === 0 ? 3200 : 2600, q: 4, gain: 0.025, bus: room.input}); });
+    if (ex.rain) a.loops.push(() => { for (let i = 0; i < 4; i++) noise(now() + rnd(0, 0.11), 0.008, {type: 'highpass', freq: rnd(3000, 6000), gain: rnd(0.003, 0.012), bus: room.input}); });
+    if (ex.jukebox) a.loops.push((tick) => { if (tick % 5 === 0){ tone(now(), 55, 0.18, {gain: 0.06, lp: 160, bus: room.input}); if (tick % 10 === 0) tone(now() + 0.27, 73.42, 0.16, {gain: 0.04, lp: 160, bus: room.input}); } });
+    if (ex.jazz) a.loops.push((tick) => { if (tick % 30 === 0) piano(room.input, true); if (tick % 15 === 7) tone(now(), [55, 61.74, 65.41, 73.42][Math.floor(tick / 15) % 4], 0.6, {type: 'sine', gain: 0.035, lp: 300, bus: room.input}); });
+  }
+
+  function startAmbience(id){
+    stopAmbience();
+    const A = AMB[id]; if (!A || !ctx) return;
+    const room = makeRoom(A.room), a = {id, room, voices: [], nodes: room.nodes.slice(), loops: [], timers: [], tick: 0};
+    for (let i = 0; i < A.voices; i++) a.voices.push(makeVoice(A, room));
+    startBeds(A, room, a);
+    a.interval = setInterval(() => {
+      if (!live()) return;
+      const t = now(); a.tick++;
+      a.voices.forEach(v => tickVoice(v, t));
+      a.loops.forEach(fn => fn(a.tick));
+    }, 110);
+    /* occasional events: each fires on average every N seconds */
+    const every = (sec, fn) => { if (!sec) return; const go = () => { if (amb !== a) return; if (live()) fn(); a.timers.push(setTimeout(go, rnd(0.5, 1.5) * sec * 1000)); }; a.timers.push(setTimeout(go, rnd(0.3, 1) * sec * 1000)); };
+    const out = room.input, ex = A.extras;
+    every(A.clink, () => clink(out)); every(A.clink * 2.5, () => bottle(out));
+    every(A.foot, () => footsteps(out, id === 'lightship' || id === 'colonial'));
+    every(A.chair, () => chair(out));
+    every(A.laugh, () => { const v = a.voices.filter(x => x !== a.tv)[Math.floor(Math.random() * (a.voices.length - (a.tv ? 1 : 0)))]; if (v) v.laugh = 2 * Math.floor(rnd(3, 6)); });
+    every(ex.pool, () => poolShot(out)); every(ex.creak, () => creak(out)); every(ex.foghorn, () => foghorn(out));
+    every(ex.register, () => register(out)); every(ex.doorbell, () => doorbell(out)); every(ex.applause, () => applause(out));
+    every(ex.cheer, () => cheer(out)); every(ex.piano, () => piano(out)); every(ex.whistle, () => whistle(out)); every(ex.ice, () => ice(out));
+    amb = a;
   }
   function stopAmbience(){
     if (!amb) return;
-    clearTimeout(amb.timer);
-    try { amb.src.stop(); amb.lfo.stop(); } catch(e){}
-    amb = null;
+    const a = amb; amb = null;
+    clearInterval(a.interval); a.timers.forEach(clearTimeout);
+    a.voices.forEach(v => { try { v.osc.stop(); v.breath.stop(); } catch(e){} v.nodes.forEach(n => { try { n.disconnect(); } catch(e){} }); });
+    a.nodes.forEach(n => { try { if (n.stop) n.stop(); } catch(e){} try { n.disconnect(); } catch(e){} });
   }
   function syncAmbience(){
-    const on = ambWanted && ambOn && enabled && !document.hidden;
-    if (!ctx){ return; }
-    if (on){ startAmbience(); ambBus.gain.setTargetAtTime(0.5, now(), 0.6); }
-    else if (amb){ ambBus.gain.setTargetAtTime(0, now(), 0.25); const a = amb; setTimeout(() => { if (amb === a && !(ambWanted && ambOn && enabled)) stopAmbience(); }, 1200); }
+    if (!ctx) return;
+    const on = !!ambWanted && ambOn && !document.hidden;
+    if (on){
+      if (!amb || amb.id !== ambWanted){
+        if (amb){ ambBus.gain.setTargetAtTime(0, now(), 0.15); const id = ambWanted; setTimeout(() => { if (ambWanted === id){ startAmbience(id); ambBus.gain.setTargetAtTime(ambVol, now(), 0.8); } }, 500); }
+        else { startAmbience(ambWanted); ambBus.gain.setTargetAtTime(ambVol, now(), 0.8); }
+      } else ambBus.gain.setTargetAtTime(ambVol, now(), 0.2);
+    } else if (amb){
+      ambBus.gain.setTargetAtTime(0, now(), 0.25);
+      const a = amb; setTimeout(() => { if (amb === a && !(ambWanted && ambOn && !document.hidden)) stopAmbience(); }, 1200);
+    }
   }
 
   ['pointerdown', 'keydown', 'touchstart'].forEach(ev => document.addEventListener(ev, unlock, {passive: true}));
@@ -1183,11 +1322,15 @@ const Sound = (function(){
   });
 
   S.configure = function(o){
-    enabled = !!o.sound; ambOn = !!o.ambience; volume = o.volume == null ? 0.7 : o.volume;
-    if (master) master.gain.setTargetAtTime(enabled ? volume : 0, now(), 0.05);
+    enabled = !!o.sound; ambOn = !!o.ambience;
+    volume = o.volume == null ? 0.7 : +o.volume; ambVol = o.ambVolume == null ? 0.6 : +o.ambVolume;
+    if (master) master.gain.setTargetAtTime(volume, now(), 0.05);
+    if (sfxBus) sfxBus.gain.setTargetAtTime(enabled ? 1 : 0, now(), 0.05);
     syncAmbience();
   };
-  S.ambience = function(want){ if (want === ambWanted) return; ambWanted = want; syncAmbience(); };
+  /* id of the bar whose sounds should play, or null for silence */
+  S.ambience = function(id){ id = id || null; if (id === ambWanted) return; ambWanted = id; syncAmbience(); };
+  S.playing = () => amb ? amb.id : null;
   return S;
 })();
 
@@ -1243,11 +1386,30 @@ if (prefs.talk == null) prefs.talk = true;
 if (!prefs.rulesV || prefs.rulesV < 2){ prefs.rules.allPass = 'dealerStuck'; prefs.rulesV = 2; }
 if (prefs.ambience == null) prefs.ambience = true;
 if (prefs.volume == null) prefs.volume = 0.7;
+if (prefs.ambVolume == null) prefs.ambVolume = 0.6;
 Sound.configure(prefs);
 window.FFSound = Sound;
 const SPEAKER_ON = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>';
 const SPEAKER_OFF = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M17 9l5 6M22 9l-5 6"/></svg>';
-const muteBtn = () => `<button class="btn ghost small iconbtn" data-act="mute" aria-pressed="${prefs.sound ? 'false' : 'true'}" aria-label="${prefs.sound ? 'Turn sound off' : 'Turn sound on'}" title="${prefs.sound ? 'Sound on' : 'Sound off'}">${prefs.sound ? SPEAKER_ON : SPEAKER_OFF}</button>`;
+const muteBtn = () => { const any = prefs.sound || prefs.ambience;
+  return `<button class="btn ghost small iconbtn" data-act="sndpanel" aria-haspopup="dialog" aria-expanded="${S.sndOpen ? 'true' : 'false'}" aria-label="Sound settings" title="Sound">${any ? SPEAKER_ON : SPEAKER_OFF}</button>`; };
+/* the sound panel lives in its own layer so game updates never interrupt a slider drag */
+function sndPanelHTML(){
+  return `<div class="sndpanel" role="dialog" aria-label="Sound">
+    <div class="sphead"><b>Sound</b><button class="btn ghost small" data-act="sndpanel">Done</button></div>
+    <label class="check"><input type="checkbox" id="sp-sound" data-bind="prefcheck" data-k="sound" ${prefs.sound ? 'checked' : ''}><span><b>Game sounds</b><br><span class="soft">Cards, knocks, bids, chimes</span></span></label>
+    <label class="spv" for="sp-vol">Game volume</label><input type="range" id="sp-vol" data-bind="volume" min="0" max="1" step="0.05" value="${prefs.volume}">
+    <label class="check"><input type="checkbox" id="sp-amb" data-bind="prefcheck" data-k="ambience" ${prefs.ambience ? 'checked' : ''}><span><b>Bar sounds</b><br><span class="soft">Voices, glasses and footsteps at each bar</span></span></label>
+    <label class="spv" for="sp-ambvol">Bar volume</label><input type="range" id="sp-ambvol" data-bind="ambvolume" min="0" max="1" step="0.05" value="${prefs.ambVolume}">
+  </div>`;
+}
+function toggleSndPanel(open){
+  S.sndOpen = open == null ? !S.sndOpen : open;
+  let el = document.getElementById('sndlayer');
+  if (!el){ el = document.createElement('div'); el.id = 'sndlayer'; document.body.appendChild(el); }
+  el.innerHTML = S.sndOpen ? sndPanelHTML() : '';
+  document.querySelectorAll('[data-act="sndpanel"].iconbtn').forEach(b => b.setAttribute('aria-expanded', S.sndOpen ? 'true' : 'false'));
+}
 /* ---------- table talk ---------- */
 const lastPick = {};
 function line(cat, vars){
@@ -1567,7 +1729,7 @@ function render(){
   const v = S.screen === 'table' && S.cfg && S.cfg.venue ? venueById(S.cfg.venue) : null;
   const bs = document.body.style;
   document.body.className = v ? 'in-venue v-' + v.style : '';
-  Sound.ambience(!!v);
+  Sound.ambience(v ? v.id : null);
   if (v){ const p = STYLE[v.style]; bs.setProperty('--wall', p.wall); bs.setProperty('--wall2', p.wall2); bs.setProperty('--trim', p.trim); bs.setProperty('--neon', v.neon); }
   else ['--wall','--wall2','--trim','--neon'].forEach(k => bs.removeProperty(k));
   $app.innerHTML = h;
@@ -2052,8 +2214,9 @@ function rulesView(){
       <h3 style="margin-top:6px">Table talk &amp; sound</h3>
       <label class="check"><input type="checkbox" id="ptalk" data-bind="talkcheck" ${prefs.talk ? 'checked' : ''}><span><b>Table talk</b><br><span class="soft">The regulars run their mouths and the peanut gallery chimes in.</span></span></label>
       <label class="check"><input type="checkbox" id="psound" data-bind="prefcheck" data-k="sound" ${prefs.sound ? 'checked' : ''}><span><b>Game sounds</b><br><span class="soft">Shuffling, cards hitting the felt, knocks for a pass, and more.</span></span></label>
-      <label class="check"><input type="checkbox" id="pamb" data-bind="prefcheck" data-k="ambience" ${prefs.ambience ? 'checked' : ''}><span><b>Bar ambience</b><br><span class="soft">Crowd murmur and clinking glasses when you play at one of the bars.</span></span></label>
-      <div class="field"><label for="pvol">Volume</label><input type="range" id="pvol" data-bind="volume" min="0" max="1" step="0.05" value="${prefs.volume}"></div>
+      <div class="field"><label for="pvol">Game volume</label><input type="range" id="pvol" data-bind="volume" min="0" max="1" step="0.05" value="${prefs.volume}"></div>
+      <label class="check"><input type="checkbox" id="pamb" data-bind="prefcheck" data-k="ambience" ${prefs.ambience ? 'checked' : ''}><span><b>Bar sounds</b><br><span class="soft">Each bar has its own room noise: voices you can't quite make out, glasses, bottles, footsteps, and a few sounds of its own.</span></span></label>
+      <div class="field"><label for="pambvol">Bar volume</label><input type="range" id="pambvol" data-bind="ambvolume" min="0" max="1" step="0.05" value="${prefs.ambVolume}"></div>
     </div>
   </div>`;
 }
@@ -2063,6 +2226,7 @@ let toastTimer;
 function toast(m){ S.toast = m; $layer.innerHTML = layerView(); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = null; $layer.innerHTML = layerView(); }, 3200); }
 
 document.addEventListener('click', e => {
+  if (S.sndOpen && !e.target.closest('.sndpanel') && !e.target.closest('[data-act="sndpanel"]')) toggleSndPanel(false);
   const el = e.target.closest('[data-act]'); if (!el || el.disabled) return;
   const a = el.dataset.act, g = S.g;
   switch (a){
@@ -2081,7 +2245,7 @@ document.addEventListener('click', e => {
       T.pick = +el.dataset.k; tour.asked++; if (T.opts[T.pick] === T.right){ tour.right++; Sound.right(); } else Sound.wrong(); saveTour(); render(); break; }
     case 'book': { const v = S.viewer; S.booked[v] = true; narrate('bookedYou', {name: S.g.names[v]});
       const o = S.g.teams.map((t, i) => i).filter(i => !S.cfg.seats[i].human && S.g.teams[i] !== S.g.teams[v]); if (o.length) say(o[Math.floor(Math.random() * o.length)], 'bookedGroan'); render(); break; }
-    case 'mute': prefs.sound = !prefs.sound; savePrefs(); Sound.configure(prefs); render(); if (prefs.sound) Sound.bid(20); break;
+    case 'sndpanel': toggleSndPanel(); break;
     case 'reveal': S.handoff = null; advance(); break;
     case 'next': S.hint = null; S.handQ = null; act({type:'next'}); break;
     case 'bid': act(el.dataset.type === 'bid' ? {type:'bid', value:+el.dataset.value} : {type:el.dataset.type}); break;
@@ -2122,7 +2286,12 @@ document.addEventListener('change', e => {
   else if (b === 'speed'){ prefs.speed = el.value; savePrefs(); }
   else if (b === 'rule'){ const k = el.dataset.k; prefs.rules[k] = (k === 'maxDraw' || k === 'target') ? +el.value : el.value; savePrefs(); }
   else if (b === 'rulecheck'){ prefs.rules[el.dataset.k] = el.checked; savePrefs(); }
-  else if (b === 'prefcheck'){ prefs[el.dataset.k] = el.checked; savePrefs(); Sound.configure(prefs); }
+  else if (b === 'prefcheck'){ prefs[el.dataset.k] = el.checked; savePrefs(); Sound.configure(prefs);
+    document.querySelectorAll('[data-act="sndpanel"].iconbtn').forEach(x => x.innerHTML = (prefs.sound || prefs.ambience) ? SPEAKER_ON : SPEAKER_OFF);
+    ['sp-sound','psound'].forEach(id => { const c = document.getElementById(id); if (c) c.checked = prefs.sound; });
+    ['sp-amb','pamb'].forEach(id => { const c = document.getElementById(id); if (c) c.checked = prefs.ambience; });
+    if (el.dataset.k === 'sound' && prefs.sound) Sound.bid(20); }
+  else if (b === 'ambvolume'){ prefs.ambVolume = +el.value; savePrefs(); Sound.configure(prefs); }
   else if (b === 'talkcheck'){ prefs.talk = el.checked; savePrefs(); }
   else if (b === 'volume'){ prefs.volume = +el.value; savePrefs(); Sound.configure(prefs); Sound.bid(20); }
 });
