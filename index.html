@@ -1175,40 +1175,41 @@ const Sound = (function(){
   /* one murmuring voice: a buzzy source shaped by two vowel filters, muffled so no words come through */
   function makeVoice(A, room){
     const osc = ctx.createOscillator(); osc.type = 'sawtooth';
-    const base = rnd(A.pitch[0], A.pitch[1]); osc.frequency.value = base;
+    const base = rnd(A.pitch[0], A.pitch[1]) * 0.7; osc.frequency.value = base;
     const breath = ctx.createBufferSource(); breath.buffer = noiseBuf; breath.loop = true;
-    const bg = ctx.createGain(); bg.gain.value = 0.25;
-    const f1 = ctx.createBiquadFilter(); f1.type = 'bandpass'; f1.Q.value = 7;
-    const f2 = ctx.createBiquadFilter(); f2.type = 'bandpass'; f2.Q.value = 9;
+    const bg = ctx.createGain(); bg.gain.value = 0.12;
+    const f1 = ctx.createBiquadFilter(); f1.type = 'bandpass'; f1.Q.value = 4;
+    const f2 = ctx.createBiquadFilter(); f2.type = 'bandpass'; f2.Q.value = 5;
     const env = ctx.createGain(); env.gain.value = 0;
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = A.muffle * rnd(0.85, 1.15);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = A.muffle * 0.5 * rnd(0.9, 1.1);
+    const lp2 = ctx.createBiquadFilter(); lp2.type = 'lowpass'; lp2.frequency.value = A.muffle * 0.6;
     const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
     osc.connect(f1); osc.connect(f2); breath.connect(bg); bg.connect(f1); bg.connect(f2);
-    f1.connect(env); f2.connect(env); env.connect(lp);
-    if (pan){ pan.pan.value = rnd(-0.8, 0.8); lp.connect(pan); pan.connect(room.input); } else lp.connect(room.input);
+    f1.connect(env); f2.connect(env); env.connect(lp); lp.connect(lp2);
+    if (pan){ pan.pan.value = rnd(-0.8, 0.8); lp2.connect(pan); pan.connect(room.input); } else lp2.connect(room.input);
     osc.start(); breath.start(0, rnd(0, 1.5));
-    return {osc, breath, f1, f2, env, base, level: rnd(0.05, 0.12), talking: false, until: 0, laugh: 0,
-      nodes: [osc, breath, bg, f1, f2, env, lp].concat(pan ? [pan] : [])};
+    return {osc, breath, f1, f2, env, base, level: rnd(0.012, 0.028), talking: false, until: 0, laugh: 0,
+      nodes: [osc, breath, bg, f1, f2, env, lp, lp2].concat(pan ? [pan] : [])};
   }
   function tickVoice(v, t){
     if (v.laugh > 0){
       v.laugh--; const on = v.laugh % 2 === 0;
-      v.osc.frequency.setTargetAtTime(v.base * (on ? 1.55 : 1.4), t, 0.02);
-      v.f1.frequency.setTargetAtTime(750, t, 0.02); v.f2.frequency.setTargetAtTime(1200, t, 0.02);
-      v.env.gain.setTargetAtTime(on ? v.level * 1.3 : v.level * 0.15, t, 0.02);
+      v.osc.frequency.setTargetAtTime(v.base * (on ? 1.2 : 1.1), t, 0.04);
+      v.f1.frequency.setTargetAtTime(600, t, 0.04); v.f2.frequency.setTargetAtTime(1000, t, 0.04);
+      v.env.gain.setTargetAtTime(on ? v.level * 0.9 : v.level * 0.2, t, 0.05);
       return;
     }
     if (t > v.until){
       v.talking = !v.talking;
       v.until = t + (v.talking ? rnd(1.2, 4.5) : rnd(0.4, 3));
-      if (!v.talking){ v.env.gain.setTargetAtTime(0, t, 0.12); return; }
+      if (!v.talking){ v.env.gain.setTargetAtTime(0, t, 0.25); return; }
     }
     if (!v.talking) return;
-    if (Math.random() < 0.28){ v.env.gain.setTargetAtTime(v.level * 0.12, t, 0.03); return; }
-    const vw = VOWELS[Math.floor(Math.random() * VOWELS.length)], k = v.base > 150 ? 1.15 : 1;
-    v.f1.frequency.setTargetAtTime(vw[0] * k, t, 0.04); v.f2.frequency.setTargetAtTime(vw[1] * k, t, 0.04);
-    v.osc.frequency.setTargetAtTime(v.base * rnd(0.88, 1.18), t, 0.06);
-    v.env.gain.setTargetAtTime(v.level * rnd(0.45, 1), t, 0.03);
+    if (Math.random() < 0.18){ v.env.gain.setTargetAtTime(v.level * 0.4, t, 0.09); return; }
+    const vw = VOWELS[Math.floor(Math.random() * VOWELS.length)], k = 0.8;
+    v.f1.frequency.setTargetAtTime(vw[0] * k, t, 0.09); v.f2.frequency.setTargetAtTime(vw[1] * k, t, 0.09);
+    v.osc.frequency.setTargetAtTime(v.base * rnd(0.94, 1.08), t, 0.12);
+    v.env.gain.setTargetAtTime(v.level * rnd(0.6, 1), t, 0.08);
   }
 
   /* one-shot room sounds; `out` is the room input */
@@ -1258,7 +1259,7 @@ const Sound = (function(){
   /* continuous beds: TV, fireplace, clock, rain, jukebox, jazz */
   function startBeds(A, room, a){
     const ex = A.extras;
-    if (ex.tv){ const tv = makeVoice({pitch: [120, 140], muffle: 700}, room); tv.level = 0.05; a.voices.push(tv); a.tv = tv; }
+    if (ex.tv){ const tv = makeVoice({pitch: [120, 140], muffle: 900}, room); tv.level = 0.012; a.voices.push(tv); a.tv = tv; }
     if (ex.fire){ const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
       const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 300; const g = ctx.createGain(); g.gain.value = 0.05;
       src.connect(f); f.connect(g); g.connect(room.input); src.start(); a.nodes.push(src, f, g);
